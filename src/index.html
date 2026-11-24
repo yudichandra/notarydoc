@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generator Akta Sirkuler - Notaris</title>
+  <link rel="icon" type="image/png" href="assets/logoakta.png" />
+  <link rel="apple-touch-icon" href="assets/logoakta.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="app-shell">
+    <!-- ==================== VIEW 1: DASHBOARD / BERANDA UTAMA ==================== -->
+    <div id="view-dashboard" class="app-view">
+      <!-- Dashboard Top Navbar -->
+      <nav class="global-nav">
+        <div class="global-nav-left">
+          <div class="app-logo">
+            <img src="assets/logoakta.png" alt="Logo NotaryDoc" class="nav-brand-logo-img" />
+          </div>
+          <span class="global-nav-title">NotaryDoc</span>
+        </div>
+
+        <div class="global-nav-center">
+          <div class="doc-context-badge">
+            <span class="doc-context-text">Sistem Pembuat Akta Notaris Keputusan Sirkuler (PT, CV, Firma)</span>
+          </div>
+        </div>
+
+        <div class="global-nav-right">
+          <!-- Demo Countdown Badge -->
+          <div class="demo-trial-pill" style="display: none;" title="Masa aktif demo sistem">
+            <span class="demo-pulse-dot"></span>
+            <span class="demo-trial-text">Demo: 3 Hari Tersisa</span>
+          </div>
+          <div class="nav-actions-group">
+            <button type="button" id="btnDashboardOpenOtherFile" class="nav-utility-btn"
+              title="Pilih dan buka berkas draf (.akta / .json) dari komputer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Buka Berkas (.akta)</span>
+            </button>
+            <input type="file" id="filePickerDashboard" accept=".akta,.json" style="display: none;" />
+            <button type="button" id="btnDashboardSettings" class="nav-utility-btn"
+              title="Buka Pengaturan Notaris &amp; Direktori">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                </path>
+              </svg>
+              <span>Pengaturan</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <div class="dashboard-content">
+        <!-- Hero: New Draft Selector -->
+        <div class="dashboard-hero">
+          <div class="dashboard-hero-header">
+            <div class="dashboard-hero-header-text">
+              <div class="dashboard-badge-pill">✨ SISTEM AKTA NOTARIS STANDAR UUJN</div>
+              <h1 class="dashboard-hero-title">Buat Draf Akta Baru</h1>
+              <p class="dashboard-hero-desc">Pilih bentuk badan usaha untuk memulai formulir pengerjaan akta pernyataan
+                keputusan:</p>
+            </div>
+            <div class="dashboard-hero-logo-wrapper">
+              <img src="assets/logoakta.png" alt="Logo NotaryDoc" class="dashboard-hero-logo-img" />
+            </div>
+          </div>
+
+          <div class="entity-cards-grid">
+            <!-- Card PT -->
+            <div class="entity-card" data-entity="PT">
+              <div class="entity-card-header">
+                <span class="entity-card-icon">🏢</span>
+                <span class="entity-card-badge badge-pt">PT</span>
+              </div>
+              <h3 class="entity-card-title">Perseroan Terbatas</h3>
+              <p class="entity-card-info">Pilih jenis keputusan akta perseroan terbatas (Perubahan Pengurus, Peningkatan Modal Sirkuler, atau Berita Acara RUPS):</p>
+              <div class="pt-action-buttons">
+                <button type="button" class="btn-card-create sub-btn btn-create-pt" data-entity="PT" data-subtype="SIRKULER_PENGURUS">+ Sirkuler: Pengurus Baru</button>
+                <button type="button" class="btn-card-create sub-btn btn-create-pt-modal" data-entity="PT" data-subtype="SIRKULER_MODAL">📈 Sirkuler: Peningkatan Modal</button>
+                <button type="button" class="btn-card-create sub-btn btn-create-pt-rups" data-entity="PT" data-subtype="RUPS_MODAL">🏛️ Berita Acara RUPS: Tambah Modal</button>
+              </div>
+            </div>
+
+            <!-- Card CV -->
+            <div class="entity-card" data-entity="CV">
+              <div class="entity-card-header">
+                <span class="entity-card-icon">🤝</span>
+                <span class="entity-card-badge badge-cv">CV</span>
+              </div>
+              <h3 class="entity-card-title">Persekutuan Komanditer</h3>
+              <p class="entity-card-info">Akta Pernyataan Keputusan Para Pesero CV (Modal Pemasukan Inbreng Rupiah,
+                Sekutu Pengurus &amp; Sekutu Komanditer).</p>
+              <button type="button" class="btn-card-create btn-create-cv" data-entity="CV">+ Buat Akta CV</button>
+            </div>
+
+            <!-- Card Firma -->
+            <div class="entity-card" data-entity="FIRMA">
+              <div class="entity-card-header">
+                <span class="entity-card-icon">⚖️</span>
+                <span class="entity-card-badge badge-fa">Firma</span>
+              </div>
+              <h3 class="entity-card-title">Persekutuan Firma</h3>
+              <p class="entity-card-info">Akta Pernyataan Keputusan Para Pesero Firma (Inbreng Sekutu, Tanggung Renteng,
+                Pesero Pengurus &amp; Pesero Firma).</p>
+              <button type="button" class="btn-card-create btn-create-fa" data-entity="FIRMA">+ Buat Akta Firma</button>
+            </div>
+
+            <!-- Card UD (Disembunyikan sementara) -->
+            <div class="entity-card" data-entity="UD" style="display: none;">
+              <div class="entity-card-header">
+                <span class="entity-card-icon">🏪</span>
+                <span class="entity-card-badge badge-ud">UD</span>
+              </div>
+              <h3 class="entity-card-title">Usaha Dagang / Perorangan</h3>
+              <p class="entity-card-info">Akta Pernyataan Keputusan Pemilik Usaha Dagang (Modal Usaha Mandiri, Kuasa
+                Pengelola Usaha, Legalitas NIB OSS).</p>
+              <button type="button" class="btn-card-create btn-create-ud" data-entity="UD">+ Buat Akta UD</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Drafts List -->
+        <div class="dashboard-drafts-section">
+          <div class="dashboard-drafts-header">
+            <div>
+              <h2 class="dashboard-section-title">Draf Akta Tersimpan</h2>
+              <p class="dashboard-section-desc" id="dashboardDirDesc">Folder arsip draf: <code
+                  id="dashboardCurrentDirLabel">-</code></p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" id="btnDashboardRefresh" class="btn btn-secondary"
+                style="font-size: 13px; padding: 6px 14px;" title="Pindai ulang berkas di folder">🔄 Segarkan</button>
+            </div>
+          </div>
+
+          <!-- Toolbar: Search & Sort Filter -->
+          <div class="dashboard-drafts-toolbar" id="dashboardDraftsToolbar" style="display: none;">
+            <div class="drafts-search-box">
+              <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="draftsSearchInput" class="drafts-search-input"
+                placeholder="Cari nama perusahaan, nomor akta, jenis badan usaha, atau berkas..." autocomplete="off"
+                spellcheck="false" />
+              <button type="button" id="draftsSearchClear" class="btn-clear-search" aria-label="Hapus pencarian"
+                style="display: none;">&times;</button>
+            </div>
+
+            <div class="drafts-toolbar-right">
+              <div class="drafts-sort-wrapper">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18M6 12h12m-9 6h6"></path>
+                </svg>
+                <span class="drafts-sort-label">Urutkan:</span>
+                <select id="draftsSortSelect" class="drafts-sort-select">
+                  <option value="time-desc">Waktu: Terbaru → Terlama</option>
+                  <option value="time-asc">Waktu: Terlama → Terbaru</option>
+                  <option value="alpha-asc">Abjad: A → Z</option>
+                  <option value="alpha-desc">Abjad: Z → A</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Container kartu draf / empty state -->
+          <div id="dashboardDraftsList" class="drafts-cards-grid">
+            <!-- Dynamic draft cards injected here -->
+          </div>
+
+          <!-- Pagination Footer -->
+          <div class="dashboard-pagination-footer" id="dashboardPaginationFooter" style="display: none;">
+            <div class="pagination-info" id="draftsPaginationInfo">
+              Menampilkan 0 draf
+            </div>
+            <div class="pagination-controls" id="draftsPaginationControls">
+              <!-- Dynamic pagination buttons injected here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 2: FORM EDITOR AKTA ==================== -->
+    <div id="view-editor" class="app-view" style="display: none;">
+      <!-- 1. Apple Global Nav (44px) -->
+      <nav class="global-nav">
+        <div class="global-nav-left">
+          <button type="button" id="btnBackToDashboard" class="nav-back-btn" title="Kembali ke Beranda Daftar Draf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <span>Beranda</span>
+          </button>
+          <span class="nav-brand-divider"></span>
+          <div class="app-logo">
+            <img src="assets/logoakta.png" alt="Logo NotaryDoc" class="nav-brand-logo-img" />
+          </div>
+          <span class="global-nav-title">NotaryDoc</span>
+        </div>
+
+        <div class="global-nav-center">
+          <div class="doc-context-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span id="headerSubtitle" class="doc-context-text">Pembuat Akta Keputusan Sirkuler PT</span>
+          </div>
+        </div>
+
+        <div class="global-nav-right">
+          <!-- Status Indicators -->
+          <div class="status-indicators-group">
+            <div class="demo-trial-pill" style="display: none;" title="Masa aktif demo sistem">
+              <span class="demo-pulse-dot"></span>
+              <span class="demo-trial-text">Demo: 3 Hari Tersisa</span>
+            </div>
+            <div id="autoSaveIndicator" class="autosave-tag unsaved"
+              title="Draf belum disimpan ke berkas (tekan Ctrl+S untuk menyimpan)">
+              <span class="pulse-dot-red" id="autoSaveDot"></span>
+              <span id="autoSaveText">Belum Disimpan</span>
+            </div>
+          </div>
+
+          <span class="nav-brand-divider"></span>
+
+          <!-- Utility Actions -->
+          <div class="nav-actions-group">
+            <button type="button" id="btnLoadDemo" class="nav-utility-btn"
+              title="Isi form dengan contoh data akta asli">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Muat Contoh</span>
+            </button>
+            <button type="button" id="btnReset" class="nav-utility-btn" title="Kosongkan seluruh isian formulir">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <polyline points="3 3 3 8 8 8"></polyline>
+              </svg>
+              <span>Reset</span>
+            </button>
+            <button type="button" id="btnTopSettings" class="nav-utility-btn"
+              title="Buka Pengaturan Notaris &amp; Direktori">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                </path>
+              </svg>
+              <span>Pengaturan</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- 2. Apple Sub-Nav Frosted (58px, Sticky Frosted Glass) -->
+      <header class="sub-nav-frosted">
+        <!-- Left: Document Identity & File Chip -->
+        <div class="sub-nav-left">
+          <div class="doc-identity-wrapper">
+            <div class="doc-title-row">
+              <h1 class="sub-nav-title">Akta Notaris &amp; Pernyataan Keputusan</h1>
+              <span id="currentEntityBadge" class="entity-card-badge badge-pt">PT</span>
+              <div id="ptSubTypeSwitcher" class="pt-subtype-switcher" style="display: none;">
+                <button type="button" class="pt-subtype-btn active" data-subtype="SIRKULER_PENGURUS" title="Akta Pernyataan Keputusan Sirkuler - Perubahan Pengurus">👥 Sirkuler Pengurus</button>
+                <button type="button" class="pt-subtype-btn" data-subtype="SIRKULER_MODAL" title="Akta Pernyataan Keputusan Sirkuler - Peningkatan Modal">📈 Sirkuler Modal</button>
+                <button type="button" class="pt-subtype-btn" data-subtype="RUPS_MODAL" title="Akta Berita Acara RUPS - Peningkatan Modal">🏛️ Berita Acara RUPS</button>
+              </div>
+            </div>
+            <div id="activeDraftFileLabel" class="active-draft-file-chip"
+              title="Jalur berkas draf yang sedang aktif di disk">
+              <svg class="file-chip-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <span class="file-chip-label">Berkas:</span>
+              <span id="activeDraftFileNameText" class="file-chip-filename">Draf Baru (Belum Disimpan)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Balanced Document Actions -->
+        <div class="sub-nav-right">
+          <!-- Group 1: File Storage Actions (Save / Save As / Open) -->
+          <div class="doc-file-actions-group">
+            <button type="button" id="btnSaveProgress" class="btn-subnav-action"
+              title="Simpan perubahan langsung ke berkas yang sedang dibuka (atau pilih lokasi jika berkas baru) [Ctrl+S]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span>Simpan Draf</span>
+            </button>
+            <button type="button" id="btnSaveAsProgress" class="btn-subnav-action"
+              title="Simpan sebagai salinan draf baru dengan nama/folder lain via File Explorer (Save As)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              <span>Simpan Sebagai...</span>
+            </button>
+            <button type="button" id="btnLoadProgress" class="btn-subnav-action"
+              title="Buka dan lanjutkan pengerjaan berkas draf (.akta / .json)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Buka Draf</span>
+            </button>
+          </div>
+          <input type="file" id="filePickerProgress" accept=".akta,.json" style="display: none;" />
+
+          <span class="subnav-divider"></span>
+
+          <!-- Group 2: Hero Output Action (Generate Word) -->
+          <button type="button" id="btnExportInternalDoc" class="btn-subnav-action" style="display: none;"
+            title="Download dokumen internal perusahaan (.docx) format Bookman Old Style / Georgia dengan tabel setoran modal sesuai draf rapat/sirkuler klien">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span id="labelExportInternalDoc">Dokumen Internal (.docx)</span>
+          </button>
+
+          <button id="btnGenerateDocx" class="btn-hero-action"
+            title="Generate dokumen akta format Microsoft Word (.docx)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Generate Word (.docx)</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- AI Warning Bar -->
+      <div id="aiWarningBanner" class="ai-warning-banner hidden">
+        <div class="warning-icon">⚠️</div>
+        <div class="warning-content" id="aiWarningList"></div>
+      </div>
+
+      <!-- Main Workspace -->
+      <div class="workspace">
+        <!-- Sidebar Tabs -->
+        <nav class="nav-tabs">
+          <button class="tab-item active" data-tab="tab-akta">
+            <span class="tab-num">1</span>
+            <span class="tab-label">Akta & Notaris</span>
+          </button>
+          <button class="tab-item" data-tab="tab-pt">
+            <span class="tab-num">2</span>
+            <span class="tab-label" id="navTabLegalitas">Legalitas Usaha</span>
+          </button>
+          <button class="tab-item" data-tab="tab-penghadap">
+            <span class="tab-num">3</span>
+            <span class="tab-label">Penghadap</span>
+          </button>
+          <button class="tab-item" data-tab="tab-saham">
+            <span class="tab-num">4</span>
+            <span class="tab-label" id="navTabModal">Modal & Sirkuler</span>
+          </button>
+          <button class="tab-item" data-tab="tab-pengurus">
+            <span class="tab-num">5</span>
+            <span class="tab-label" id="navTabPengurus">Pengurus / Organ</span>
+          </button>
+          <button class="tab-item" data-tab="tab-saksi">
+            <span class="tab-num">6</span>
+            <span class="tab-label">Saksi Notaris</span>
+          </button>
+          <button class="tab-item" data-tab="tab-preview">
+            <span class="tab-num">7</span>
+            <span class="tab-label">Live Preview Akta</span>
+          </button>
+        </nav>
+
+        <!-- Content Area -->
+        <main class="content-panel">
+          <form id="aktaForm" autocomplete="off">
+
+            <!-- TAB 1: DATA AKTA & NOTARIS -->
+            <section id="tab-akta" class="tab-page active">
+              <div class="section-card">
+                <h2 class="card-title">Bagian 1: Data Kepala Akta & Kantor Notaris</h2>
+                <p class="card-desc">Informasi nomor akta, waktu peresmian, dan notaris yang bertugas.</p>
+
+                <div class="grid grid-3">
+                  <div class="form-group">
+                    <label for="aktaNomor">Nomor Akta <span class="req">*</span></label>
+                    <input type="text" id="aktaNomor" class="form-input" placeholder="Contoh: 23" required />
+                    <div class="terbilang-preview" id="terbilangAktaNomor"></div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="aktaTanggal">Tanggal Akta <span class="req">*</span></label>
+                    <input type="date" id="aktaTanggal" class="form-input" required />
+                    <div class="terbilang-preview" id="terbilangAktaTanggal"></div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="aktaJam">Jam Penghadapan <span class="req">*</span></label>
+                    <input type="time" id="aktaJam" class="form-input" value="11:00" required />
+                    <div class="terbilang-preview" id="terbilangAktaJam"></div>
+                  </div>
+                </div>
+
+                <div class="grid grid-2 mt-4">
+                  <div class="form-group">
+                    <label for="notarisNama">Nama Lengkap Notaris (Tanpa Gelar) <span class="req">*</span> <span
+                        class="badge-lock-pill" id="badgeLockNotarisNama" style="display: none;"></span></label>
+                    <input type="text" id="notarisNama" class="form-input" placeholder="Contoh: GRENDI JAYA DARMAWAN"
+                      required />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="notarisWilayah">Wilayah Jabatan Notaris <span class="req">*</span></label>
+                    <input type="text" id="notarisWilayah" class="form-input" placeholder="Contoh: Kabupaten Kudus"
+                      required />
+                  </div>
+                </div>
+
+                <div class="grid grid-2 mt-3">
+                  <div class="form-group">
+                    <label for="notarisGelarPanjang">Gelar Lengkap / Dieja (Komparisi Awal Akta) <span
+                        class="req">*</span></label>
+                    <input type="text" id="notarisGelarPanjang" class="form-input"
+                      placeholder="Contoh: Sarjana Hukum, Magister Kenotariatan"
+                      value="Sarjana Hukum, Magister Kenotariatan" required />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="notarisGelarSingkat">Gelar Singkat (Tanda Tangan Akhir Akta) <span
+                        class="req">*</span></label>
+                    <input type="text" id="notarisGelarSingkat" class="form-input" placeholder="Contoh: S.H., M.Kn."
+                      value="S.H., M.Kn." required />
+                  </div>
+                </div>
+
+                <!-- Live Preview Terkait Bagian 1 -->
+                <div class="section-live-preview-box">
+                  <div class="section-live-preview-header">
+                    <div class="section-live-preview-header-left">
+                      <div class="preview-badge-live">
+                        <span class="pulse-dot"></span>
+                        <span class="preview-badge-text">Live Preview: Kepala Akta & Notaris (Pasal 42 UUJN)</span>
+                      </div>
+                      <span class="badge-customized-pill" id="customBadge-1" style="display: none;">● Redaksional
+                        Khusus</span>
+                    </div>
+                    <div class="section-live-preview-actions">
+                      <button type="button" class="btn-edit-clause" data-section="1"
+                        title="Kustomisasi kalimat & redaksional bagian ini">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.2">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Edit Redaksional
+                      </button>
+                      <button type="button" class="btn-reset-clause" data-section="1" id="btnResetClause-1"
+                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
+                        Reset</button>
+                    </div>
+                  </div>
+                  <div class="section-live-preview-paper" id="sectionSnippet-1"></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- TAB 2: DATA LEGALITAS BADAN USAHA -->
+            <section id="tab-pt" class="tab-page">
+              <div class="section-card">
+                <h2 class="card-title" id="ptSectionTitle">Bagian 2: Identitas Perusahaan & Riwayat Legalitas (Anggaran
+                  Dasar)</h2>
+                <p class="card-desc" id="ptSectionDesc">Data identitas entitas, SK Pengesahan / Pendaftaran SABU AHU /
+                  NIB OSS, dan riwayat akta.</p>
+
+                <div class="grid grid-2">
+                  <div class="form-group">
+                    <label for="ptNama" id="ptNamaLabel">Nama Perseroan Terbatas (PT) <span class="req">*</span></label>
+                    <input type="text" id="ptNama" class="form-input" placeholder="Contoh: PT. SEHAT DAN BAHAGIA SELALU"
+                      required />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="ptKedudukan" id="ptKedudukanLabel">Kedudukan (Kota / Kabupaten) <span
+                        class="req">*</span></label>
+                    <input type="text" id="ptKedudukan" class="form-input" placeholder="Contoh: Kabupaten Kudus"
+                      required />
+                  </div>
+                </div>
+
+                <div class="sub-card mt-4">
+                  <h3 class="sub-card-title" id="titleAktaPendirian">1. Akta Pendirian Perusahaan</h3>
+                  <div class="grid grid-3">
+                    <div class="form-group">
+                      <label for="ptAktaPendirianNomor">Nomor Akta Pendirian</label>
+                      <input type="text" id="ptAktaPendirianNomor" class="form-input" placeholder="Contoh: 27" />
+                    </div>
+                    <div class="form-group">
+                      <label for="ptAktaPendirianTgl">Tanggal Akta Pendirian</label>
+                      <input type="date" id="ptAktaPendirianTgl" class="form-input" />
+                      <div class="terbilang-preview" id="terbilangPtAktaPendirianTgl"></div>
+                    </div>
+                    <div class="form-group">
+                      <label for="ptAktaPendirianNotaris">Notaris Pembuat Pendirian</label>
+                      <input type="text" id="ptAktaPendirianNotaris" class="form-input spell-check"
+                        placeholder="Contoh: Apriliana Dewi Yuwono, S.H., M.Kn." />
+                    </div>
+                  </div>
+                  <div class="grid grid-3 mt-3">
+                    <div class="form-group">
+                      <label for="ptAktaPendirianWilayah">Wilayah Notaris Pendirian</label>
+                      <input type="text" id="ptAktaPendirianWilayah" class="form-input spell-check"
+                        placeholder="Contoh: Kabupaten Kudus" />
+                    </div>
+                    <div class="form-group">
+                      <label for="ptSkPendirianNomor" id="labelSkPendirianNomor">Nomor SK Pengesahan /
+                        Pendaftaran</label>
+                      <input type="text" id="ptSkPendirianNomor" class="form-input"
+                        placeholder="Contoh: AHU-45831.AH.01.01.Tahun 2010" />
+                    </div>
+                    <div class="form-group">
+                      <label for="ptSkPendirianTgl" id="labelSkPendirianTgl">Tanggal SK / Pendaftaran</label>
+                      <input type="date" id="ptSkPendirianTgl" class="form-input" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sub-card mt-4">
+                  <h3 class="sub-card-title" id="titleAktaPerubahan">2. Akta Perubahan Terakhir</h3>
+                  <div class="grid grid-3">
+                    <div class="form-group">
+                      <label for="ptAktaPerubahanNomor">Nomor Akta Terakhir</label>
+                      <input type="text" id="ptAktaPerubahanNomor" class="form-input" placeholder="Contoh: 14" />
+                    </div>
+                    <div class="form-group">
+                      <label for="ptAktaPerubahanTgl">Tanggal Akta Terakhir</label>
+                      <input type="date" id="ptAktaPerubahanTgl" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                      <label for="ptAktaPerubahanNotaris">Notaris Perubahan</label>
+                      <input type="text" id="ptAktaPerubahanNotaris" class="form-input spell-check"
+                        placeholder="Contoh: Saya, Notaris / Nama Notaris" />
+                    </div>
+                  </div>
+                  <div class="grid grid-3 mt-3">
+                    <div class="form-group">
+                      <label for="ptAktaPerubahanWilayah">Wilayah Notaris Perubahan</label>
+                      <input type="text" id="ptAktaPerubahanWilayah" class="form-input spell-check"
+                        placeholder="Contoh: Kabupaten Kudus" />
+                    </div>
+                    <div class="form-group">
+                      <label for="ptSkPerubahanNomor" id="labelSkPerubahanNomor">Nomor SK Persetujuan / Bukti
+                        SABU</label>
+                      <input type="text" id="ptSkPerubahanNomor" class="form-input"
+                        placeholder="Contoh: AHU-0079724.AH.01.02.Tahun 2023" />
+                    </div>
+                    <div class="form-group">
+                      <label for="ptSkPerubahanTgl" id="labelSkPerubahanTgl">Tanggal SK Persetujuan / SABU</label>
+                      <input type="date" id="ptSkPerubahanTgl" class="form-input" />
+                    </div>
+                  </div>
+                  <div class="grid grid-2 mt-3">
+                    <div class="form-group">
+                      <label for="ptPemberitahuanPerubahanNomor" id="labelPemberitahuanNomor">Nomor Penerimaan
+                        Pemberitahuan (AHU / NIB)</label>
+                      <input type="text" id="ptPemberitahuanPerubahanNomor" class="form-input"
+                        placeholder="Contoh: AHU-AH.01.03-0158964" />
+                    </div>
+                    <div class="form-group" id="groupPasalSirkuler">
+                      <label for="ptPasalSirkuler" id="labelPasalSirkuler">Pasal AD Tentang Sirkuler</label>
+                      <input type="text" id="ptPasalSirkuler" class="form-input" value="10 ayat (5)" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live Preview Terkait Bagian 2 -->
+                <div class="section-live-preview-box">
+                  <div class="section-live-preview-header">
+                    <div class="section-live-preview-header-left">
+                      <div class="preview-badge-live">
+                        <span class="pulse-dot"></span>
+                        <span class="preview-badge-text">Live Preview: Identitas Badan Usaha & Riwayat Legalitas</span>
+                      </div>
+                      <span class="badge-customized-pill" id="customBadge-2" style="display: none;">● Redaksional
+                        Khusus</span>
+                    </div>
+                    <div class="section-live-preview-actions">
+                      <button type="button" class="btn-edit-clause" data-section="2"
+                        title="Kustomisasi kalimat & redaksional bagian ini">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.2">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Edit Redaksional
+                      </button>
+                      <button type="button" class="btn-reset-clause" data-section="2" id="btnResetClause-2"
+                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
+                        Reset</button>
+                    </div>
+                  </div>
+                  <div class="section-live-preview-paper" id="sectionSnippet-2"></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- TAB 3: DATA PENGHADAP -->
+            <section id="tab-penghadap" class="tab-page">
+              <div class="section-card">
+                <h2 class="card-title">Bagian 3: Identitas Penghadap (Komparisi)</h2>
+                <p class="card-desc">Orang yang datang langsung menghadap Notaris atas kuasa pemegang saham.</p>
+
+                <div class="grid grid-3">
+                  <div class="form-group">
+                    <label for="penghadapSapaan">Sapaan</label>
+                    <select id="penghadapSapaan" class="form-input">
+                      <option value="Tuan">Tuan</option>
+                      <option value="Nyonya">Nyonya</option>
+                      <option value="Nona">Nona</option>
+                    </select>
+                  </div>
+                  <div class="form-group col-span-2">
+                    <label for="penghadapNama">Nama Lengkap Penghadap <span class="req">*</span></label>
+                    <input type="text" id="penghadapNama" class="form-input" placeholder="Contoh: BULAN SABIT"
+                      required />
+                  </div>
+                </div>
+
+                <div class="grid grid-3 mt-3">
+                  <div class="form-group">
+                    <label for="penghadapTempatLahir">Tempat Lahir <span class="req">*</span></label>
+                    <input type="text" id="penghadapTempatLahir" class="form-input" placeholder="Contoh: Temanggung"
+                      required />
+                  </div>
+                  <div class="form-group">
+                    <label for="penghadapTanggalLahir">Tanggal Lahir <span class="req">*</span></label>
+                    <input type="date" id="penghadapTanggalLahir" class="form-input" required />
+                    <div class="terbilang-preview" id="terbilangPenghadapTanggalLahir"></div>
+                  </div>
+                  <div class="form-group">
+                    <label for="penghadapNik">NIK (Nomor KTP 16 Digit) <span class="req">*</span></label>
+                    <input type="text" id="penghadapNik" class="form-input" maxlength="16"
+                      placeholder="Contoh: 6666611001020001" required />
+                    <div class="validation-msg" id="msg-penghadapNik"></div>
+                  </div>
+                </div>
+
+                <div class="grid grid-3 mt-3">
+                  <div class="form-group">
+                    <label for="penghadapPekerjaan">Pekerjaan</label>
+                    <input type="text" id="penghadapPekerjaan" class="form-input" value="Karyawan Swasta" />
+                  </div>
+                  <div class="form-group">
+                    <label for="penghadapWn">Kewarganegaraan</label>
+                    <input type="text" id="penghadapWn" class="form-input" value="Indonesia" />
+                  </div>
+                  <div class="form-group">
+                    <label for="penghadapJabatan">Jabatan Dalam PT</label>
+                    <input type="text" id="penghadapJabatan" class="form-input" value="Direktur" />
+                  </div>
+                </div>
+
+                <div class="form-group mt-3">
+                  <label for="penghadapAlamat">Alamat Tempat Tinggal (Lengkap Sesuai KTP) <span
+                      class="req">*</span></label>
+                  <textarea id="penghadapAlamat" class="form-input" rows="3"
+                    placeholder="Contoh: Kabupaten Kudus, Provinsi Jawa Tengah, Perumahan Lestari Jaya, RT 004, RW 004, Kecamatan Kayu, Kelurahan Bintang"
+                    required></textarea>
+                </div>
+
+                <!-- Live Preview Terkait Bagian 3 -->
+                <div class="section-live-preview-box">
+                  <div class="section-live-preview-header">
+                    <div class="section-live-preview-header-left">
+                      <div class="preview-badge-live">
+                        <span class="pulse-dot"></span>
+                        <span class="preview-badge-text">Live Preview: Komparisi Penghadap & Kuasa</span>
+                      </div>
+                      <span class="badge-customized-pill" id="customBadge-3" style="display: none;">● Redaksional
+                        Khusus</span>
+                    </div>
+                    <div class="section-live-preview-actions">
+                      <button type="button" class="btn-edit-clause" data-section="3"
+                        title="Kustomisasi kalimat & redaksional bagian ini">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.2">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Edit Redaksional
+                      </button>
+                      <button type="button" class="btn-reset-clause" data-section="3" id="btnResetClause-3"
+                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
+                        Reset</button>
+                    </div>
+                  </div>
+                  <div class="section-live-preview-paper" id="sectionSnippet-3"></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- TAB 4: MODAL & SIRKULER -->
+            <section id="tab-saham" class="tab-page">
+              <div class="section-card">
+                <h2 class="card-title" id="tab4Title">Bagian 4: Komposisi Modal & Keputusan Sirkuler</h2>
+                <p class="card-desc" id="tab4Desc">AI otomatis mencocokkan total modal/saham dengan jumlah bagian
+                  masing-masing pihak.</p>
+
+                <!-- Khusus PT: Saham Seri A & B -->
+                <div id="sectionSahamPT">
+                  <div class="grid grid-2">
+                    <div class="form-group">
+                      <label for="totalSahamSeriA">Total Saham Seri-A (Lembar) <span class="req">*</span></label>
+                      <input type="number" id="totalSahamSeriA" class="form-input" placeholder="Contoh: 293100" />
+                      <div class="terbilang-preview" id="terbilangTotalSahamSeriA"></div>
+                    </div>
+                    <div class="form-group">
+                      <label for="totalSahamSeriB">Total Saham Seri-B (Lembar)</label>
+                      <input type="number" id="totalSahamSeriB" class="form-input" placeholder="Contoh: 147383" />
+                      <div class="terbilang-preview" id="terbilangTotalSahamSeriB"></div>
+                    </div>
+                  </div>
+
+                  <div class="sub-card mt-4">
+                    <div class="flex-between">
+                      <h3 class="sub-card-title">Daftar Pemegang Saham Penandatangan Sirkuler</h3>
+                      <button type="button" id="btnAddPemegangSaham" class="btn btn-secondary btn-sm">+ Tambah Pemegang
+                        Saham</button>
+                    </div>
+                    <div id="pemegangSahamContainer" class="dynamic-list mt-3">
+                      <!-- Generated dynamically via JS -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Khusus PT Peningkatan Modal (Sirkuler Modal & RUPS Modal) -->
+                <div id="sectionModalPeningkatanPT" style="display: none;">
+                  <!-- Subcard Khusus RUPS -->
+                  <div class="sub-card mb-4" id="subcardRupsMetadata" style="display: none;">
+                    <h3 class="sub-card-title">📅 Data Pelaksanaan Rapat Umum Pemegang Saham (RUPS) Luar Biasa</h3>
+                    <div class="grid grid-3">
+                      <div class="form-group">
+                        <label for="rupsTanggal">Tanggal RUPS <span class="req">*</span></label>
+                        <input type="date" id="rupsTanggal" class="form-input" />
+                        <div class="terbilang-preview" id="terbilangRupsTanggal"></div>
+                      </div>
+                      <div class="form-group">
+                        <label for="rupsJam">Jam Pelaksanaan RUPS <span class="req">*</span></label>
+                        <input type="text" id="rupsJam" class="form-input" placeholder="08.00 WIB" />
+                        <div class="terbilang-preview" id="terbilangRupsJam"></div>
+                      </div>
+                      <div class="form-group">
+                        <label for="rupsPimpinan">Pimpinan Rapat <span class="req">*</span></label>
+                        <input type="text" id="rupsPimpinan" class="form-input" placeholder="Contoh: Tuan TEJO PERSADA" />
+                      </div>
+                    </div>
+                    <div class="grid grid-2 mt-3">
+                      <div class="form-group">
+                        <label for="rupsTempat">Tempat / Lokasi Penyelenggaraan RUPS <span class="req">*</span></label>
+                        <input type="text" id="rupsTempat" class="form-input" placeholder="Kantor Perseroan di Jalan Tanjung Karang nomor. 11, Kelurahan Jati Kulon, Kecamatan Jati, Kabupaten Kudus" />
+                      </div>
+                      <div class="form-group">
+                        <label for="rupsSahamHadir">Total Saham Hadir / Kuorum (Lembar) <span class="req">*</span></label>
+                        <input type="number" id="rupsSahamHadir" class="form-input" placeholder="199000" />
+                        <div class="terbilang-preview" id="terbilangRupsSahamHadir"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Subcard Modal Semula vs Menjadi -->
+                  <div class="sub-card">
+                    <h3 class="sub-card-title">💰 Komposisi Modal Ditempatkan dan Disetor</h3>
+                    <div class="grid grid-3">
+                      <div class="form-group">
+                        <label for="modalSemulaNominal">Modal Semula (Rp) <span class="req">*</span></label>
+                        <input type="number" id="modalSemulaNominal" class="form-input" placeholder="353201000000" />
+                        <div class="terbilang-preview" id="terbilangModalSemulaNominal"></div>
+                      </div>
+                      <div class="form-group">
+                        <label for="modalSemulaSaham">Jumlah Saham Semula (Lembar) <span class="req">*</span></label>
+                        <input type="number" id="modalSemulaSaham" class="form-input" placeholder="353201" />
+                        <div class="terbilang-preview" id="terbilangModalSemulaSaham"></div>
+                      </div>
+                      <div class="form-group">
+                        <label for="nominalPerSaham">Nilai Nominal per Saham (Rp) <span class="req">*</span></label>
+                        <input type="number" id="nominalPerSaham" class="form-input" value="1000000" />
+                        <div class="terbilang-preview" id="terbilangNominalPerSaham"></div>
+                      </div>
+                    </div>
+                    <div class="grid grid-2 mt-3">
+                      <div class="form-group">
+                        <label for="modalMenjadiNominal">Modal Menjadi Setelah Peningkatan (Rp) <span class="req">*</span></label>
+                        <input type="number" id="modalMenjadiNominal" class="form-input" placeholder="962506000000" />
+                        <div class="terbilang-preview" id="terbilangModalMenjadiNominal"></div>
+                      </div>
+                      <div class="form-group">
+                        <label for="modalMenjadiSaham">Jumlah Saham Menjadi (Lembar) <span class="req">*</span></label>
+                        <input type="number" id="modalMenjadiSaham" class="form-input" placeholder="962506" />
+                        <div class="terbilang-preview" id="terbilangModalMenjadiSaham"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Subcard Pengeluaran Saham Simpanan & Pengambil Bagian -->
+                  <div class="sub-card mt-4">
+                    <h3 class="sub-card-title">📦 Pengeluaran Saham Dalam Simpanan (Portfolio)</h3>
+                    <div class="grid grid-2">
+                      <div class="form-group">
+                        <label for="sahamSimpananDikeluarkanJml">Jumlah Saham Portepel Dikeluarkan (Lembar) <span class="req">*</span></label>
+                        <input type="number" id="sahamSimpananDikeluarkanJml" class="form-input" placeholder="609305" />
+                        <div class="terbilang-preview" id="terbilangSahamSimpananDikeluarkanJml"></div>
+                      </div>
+                      <div class="form-group">
+                        <label for="sahamSimpananDikeluarkanNominal">Nilai Nominal Dikeluarkan (Rp) <span class="req">*</span></label>
+                        <input type="number" id="sahamSimpananDikeluarkanNominal" class="form-input" placeholder="609305000000" />
+                        <div class="terbilang-preview" id="terbilangSahamSimpananDikeluarkanNominal"></div>
+                      </div>
+                    </div>
+
+                    <h4 class="mt-3 font-semibold text-sm" style="color: var(--ink);">Pihak yang Mengambil Bagian dan Menyetor Penuh:</h4>
+                    <div class="grid grid-2 mt-2">
+                      <div class="form-group">
+                        <label for="pengambilNama">Nama Pihak / Perusahaan Pengambil Saham <span class="req">*</span></label>
+                        <input type="text" id="pengambilNama" class="form-input" placeholder="Contoh: perseroan terbatas PT. JAYA ABADI SELALU" />
+                      </div>
+                      <div class="form-group">
+                        <label for="pengambilKedudukan">Kedudukan Perusahaan <span class="req">*</span></label>
+                        <input type="text" id="pengambilKedudukan" class="form-input" placeholder="Kabupaten Kudus" />
+                      </div>
+                    </div>
+                    <div class="grid grid-2 mt-2">
+                      <div class="form-group">
+                        <label for="pengambilAktaPendirian">Akta &amp; SK Pendirian Pihak Pengambil</label>
+                        <textarea id="pengambilAktaPendirian" class="form-input" rows="2" placeholder="Akta Pendirian No. 24 tgl 27-12-2016 Notaris Lindawati Kudus, SK Menkumham tgl 29-12-2016 No. AHU-0058025.AH.01.01.Tahun 2016"></textarea>
+                      </div>
+                      <div class="form-group">
+                        <label for="pengambilAktaPerubahan">Akta &amp; SK Perubahan Terakhir Pihak Pengambil</label>
+                        <textarea id="pengambilAktaPerubahan" class="form-input" rows="2" placeholder="Akta Perubahan No. 11 tgl 22-12-2025 Notaris Saya, Notaris, SK tgl 24-12-2025 No. AHU-0085097.AH.01.02.Tahun 2025 &amp; AHU-AH.01.03-0257678"></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Subcard Pelepasan Hak Pre-emptive -->
+                  <div class="sub-card mt-4">
+                    <h3 class="sub-card-title">🤝 Pelepasan Hak Memesan Terlebih Dahulu (Pre-emptive Rights)</h3>
+                    <div class="grid grid-2">
+                      <div class="form-group">
+                        <label for="pelepasanNama">Pihak yang Melepaskan Hak <span class="req">*</span></label>
+                        <input type="text" id="pelepasanNama" class="form-input" placeholder="Contoh: perseroan terbatas PT. PELITA JAYA SELALU" />
+                      </div>
+                      <div class="form-group">
+                        <label for="pelepasanKedudukan">Kedudukan Perusahaan <span class="req">*</span></label>
+                        <input type="text" id="pelepasanKedudukan" class="form-input" placeholder="Kabupaten Kudus" />
+                      </div>
+                    </div>
+                    <div class="form-group mt-2">
+                      <label for="pelepasanLegalitas">Keterangan Legalitas Pihak yang Melepaskan Hak</label>
+                      <textarea id="pelepasanLegalitas" class="form-input" rows="2" placeholder="Akta Pendirian No. 2 tgl 02-11-2018 Notaris Lindawati Kudus, SK AHU-0052955; Akta Perubahan No. 3 tgl 09-12-2025 Notaris Saya, Penerimaan AHU-AH.01.09-0365211"></textarea>
+                    </div>
+                  </div>
+
+                  <!-- Subcard Rincian Susunan Pemegang Saham Baru (Pasal 4 ayat 2) -->
+                  <div class="sub-card mt-4">
+                    <div class="flex-between">
+                      <h3 class="sub-card-title">📜 Rincian Susunan Pemegang Saham Baru (Pasal 4 ayat 2)</h3>
+                      <button type="button" id="btnAddPemegangSahamModal" class="btn btn-secondary btn-sm">+ Tambah Pemegang Saham</button>
+                    </div>
+                    <p class="text-xs text-muted mt-1" style="color: var(--ink-muted-48); font-size: 12px;">Daftar pemegang saham dan rincian penyetoran saham yang tercantum pada klausula perubahan Pasal 4 ayat (2) dan akhir akta.</p>
+                    <div id="pemegangSahamModalContainer" class="dynamic-list mt-3">
+                      <!-- Generated dynamically via JS -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Khusus CV, FIRMA, & UD: Modal Inbreng / Modal Pemasukan (Rupiah) -->
+                <div id="sectionModalNonPT" class="hidden">
+                  <div class="grid grid-2">
+                    <div class="form-group">
+                      <label for="totalModalNominal" id="labelTotalModalNominal">Total Modal Pemasukan / Inbreng (Rp)
+                        <span class="req">*</span></label>
+                      <input type="number" id="totalModalNominal" class="form-input" placeholder="Contoh: 500000000" />
+                      <div class="terbilang-preview" id="terbilangTotalModalNominal"></div>
+                    </div>
+                  </div>
+
+                  <div class="sub-card mt-4">
+                    <div class="flex-between">
+                      <h3 class="sub-card-title" id="labelDaftarSekutu">Daftar Para Pesero / Sekutu Penandatangan
+                        Keputusan</h3>
+                      <button type="button" id="btnAddSekutu" class="btn btn-secondary btn-sm">+ Tambah Sekutu /
+                        Pemilik</button>
+                    </div>
+                    <div id="sekutuContainer" class="dynamic-list mt-3">
+                      <!-- Generated dynamically via JS -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live Preview Terkait Bagian 4 -->
+                <div class="section-live-preview-box">
+                  <div class="section-live-preview-header">
+                    <div class="section-live-preview-header-left">
+                      <div class="preview-badge-live">
+                        <span class="pulse-dot"></span>
+                        <span class="preview-badge-text">Live Preview: Rincian Modal & Penandatangan Keputusan
+                          Sirkuler</span>
+                      </div>
+                      <span class="badge-customized-pill" id="customBadge-4" style="display: none;">● Redaksional
+                        Khusus</span>
+                    </div>
+                    <div class="section-live-preview-actions">
+                      <button type="button" class="btn-edit-clause" data-section="4"
+                        title="Kustomisasi kalimat & redaksional bagian ini">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.2">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Edit Redaksional
+                      </button>
+                      <button type="button" class="btn-reset-clause" data-section="4" id="btnResetClause-4"
+                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
+                        Reset</button>
+                    </div>
+                  </div>
+                  <div class="section-live-preview-paper" id="sectionSnippet-4"></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- TAB 5: SUSUNAN PENGURUS BARU -->
+            <section id="tab-pengurus" class="tab-page">
+              <div class="section-card">
+                <div class="flex-between">
+                  <div>
+                    <h2 class="card-title" id="tab5Title">Bagian 5: Susunan Pengurus & Organ Baru</h2>
+                    <p class="card-desc" id="tab5Desc">Pejabat atau sekutu yang diangkat dalam Akta Pernyataan
+                      Keputusan.</p>
+                  </div>
+                  <button type="button" id="btnAddPengurus" class="btn btn-secondary btn-sm">+ Tambah Pejabat
+                    Pengurus</button>
+                </div>
+
+                <div id="infoPeningkatanModalPengurus" class="alert-info-box mt-3 mb-3" style="display: none; padding: 12px 16px; background: rgba(0, 102, 204, 0.08); border-left: 4px solid #0066cc; border-radius: 6px;">
+                  <h4 style="font-size: 13px; font-weight: 700; color: #004c99; margin: 0 0 4px;">ℹ️ Agenda Peningkatan Modal &amp; Perubahan Anggaran Dasar Pasal 4</h4>
+                  <p style="font-size: 12px; color: #1e3a8a; margin: 0; line-height: 1.45;">Pada akta peningkatan modal ini, susunan Direksi dan Dewan Komisaris tidak mengalami perubahan dan tetap mengikuti akta sebelumnya. Jika sewaktu-waktu dibutuhkan pergantian pengurus sekaligus, Anda dapat tetap menambahkan pejabat pengurus di bawah ini.</p>
+                </div>
+
+                <div class="grid grid-2 mt-3">
+                  <div class="form-group">
+                    <label for="masaJabatan">Masa Jabatan Pengurus Baru</label>
+                    <input type="text" id="masaJabatan" class="form-input spell-check" value="5 (lima)" />
+                  </div>
+                  <div class="form-group">
+                    <label for="tglEfektif">Tanggal Efektif Berlaku</label>
+                    <input type="date" id="tglEfektif" class="form-input" />
+                  </div>
+                </div>
+
+                <div id="pengurusContainer" class="dynamic-list mt-4">
+                  <!-- Generated dynamically via JS -->
+                </div>
+
+                <!-- Live Preview Terkait Bagian 5 -->
+                <div class="section-live-preview-box">
+                  <div class="section-live-preview-header">
+                    <div class="section-live-preview-header-left">
+                      <div class="preview-badge-live">
+                        <span class="pulse-dot"></span>
+                        <span class="preview-badge-text">Live Preview: Keputusan Pengurus & Format Kolom Pejabat
+                          Baru</span>
+                      </div>
+                      <span class="badge-customized-pill" id="customBadge-5" style="display: none;">● Redaksional
+                        Khusus</span>
+                    </div>
+                    <div class="section-live-preview-actions">
+                      <button type="button" class="btn-edit-clause" data-section="5"
+                        title="Kustomisasi kalimat & redaksional bagian ini">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.2">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Edit Redaksional
+                      </button>
+                      <button type="button" class="btn-reset-clause" data-section="5" id="btnResetClause-5"
+                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
+                        Reset</button>
+                    </div>
+                  </div>
+                  <div class="section-live-preview-paper" id="sectionSnippet-5"></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- TAB 6: SAKSI NOTARIS -->
+            <section id="tab-saksi" class="tab-page">
+              <div class="section-card">
+                <h2 class="card-title">Bagian 6: Saksi-Saksi Akta (Staf Kantor Notaris)</h2>
+                <p class="card-desc">Sesuai UUJN, pembuatan akta notaris wajib dihadiri oleh minimal 2 orang saksi.</p>
+
+                <div class="grid grid-2 gap-4">
+                  <!-- Saksi 1 -->
+                  <div class="sub-card">
+                    <h3 class="sub-card-title">Saksi 1</h3>
+                    <div class="grid grid-3">
+                      <div class="form-group">
+                        <label>Sapaan</label>
+                        <select id="saksi1Sapaan" class="form-input">
+                          <option value="Nona">Nona</option>
+                          <option value="Tuan">Tuan</option>
+                          <option value="Nyonya">Nyonya</option>
+                        </select>
+                      </div>
+                      <div class="form-group col-span-2">
+                        <label>Nama Lengkap</label>
+                        <input type="text" id="saksi1Nama" class="form-input spell-check"
+                          placeholder="INDAH YUNI RETNONINGTYAS" />
+                      </div>
+                    </div>
+                    <div class="grid grid-2 mt-2">
+                      <div class="form-group">
+                        <label>Tempat Lahir</label>
+                        <input type="text" id="saksi1TempatLahir" class="form-input" placeholder="Kudus" />
+                      </div>
+                      <div class="form-group">
+                        <label>Tanggal Lahir</label>
+                        <input type="date" id="saksi1TanggalLahir" class="form-input" />
+                      </div>
+                    </div>
+                    <div class="form-group mt-2">
+                      <label>NIK KTP</label>
+                      <input type="text" id="saksi1Nik" class="form-input" maxlength="16"
+                        placeholder="3319014906990003" />
+                    </div>
+                    <div class="form-group mt-2">
+                      <label>Alamat KTP</label>
+                      <textarea id="saksi1Alamat" class="form-input" rows="2"
+                        placeholder="Kabupaten Kudus, Provinsi Jawa Tengah..."></textarea>
+                    </div>
+                  </div>
+
+                  <!-- Saksi 2 -->
+                  <div class="sub-card">
+                    <h3 class="sub-card-title">Saksi 2</h3>
+                    <div class="grid grid-3">
+                      <div class="form-group">
+                        <label>Sapaan</label>
+                        <select id="saksi2Sapaan" class="form-input">
+                          <option value="Nona">Nona</option>
+                          <option value="Tuan">Tuan</option>
+                          <option value="Nyonya">Nyonya</option>
+                        </select>
+                      </div>
+                      <div class="form-group col-span-2">
+                        <label>Nama Lengkap</label>
+                        <input type="text" id="saksi2Nama" class="form-input spell-check"
+                          placeholder="MEILIANI PRAVITA SARI" />
+                      </div>
+                    </div>
+                    <div class="grid grid-2 mt-2">
+                      <div class="form-group">
+                        <label>Tempat Lahir</label>
+                        <input type="text" id="saksi2TempatLahir" class="form-input" placeholder="Kudus" />
+                      </div>
+                      <div class="form-group">
+                        <label>Tanggal Lahir</label>
+                        <input type="date" id="saksi2TanggalLahir" class="form-input" />
+                      </div>
+                    </div>
+                    <div class="form-group mt-2">
+                      <label>NIK KTP</label>
+                      <input type="text" id="saksi2Nik" class="form-input" maxlength="16"
+                        placeholder="3319026605950002" />
+                    </div>
+                    <div class="form-group mt-2">
+                      <label>Alamat KTP</label>
+                      <textarea id="saksi2Alamat" class="form-input" rows="2"
+                        placeholder="Kabupaten Kudus, Provinsi Jawa Tengah..."></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live Preview Terkait Bagian 6 -->
+                <div class="section-live-preview-box">
+                  <div class="section-live-preview-header">
+                    <div class="section-live-preview-header-left">
+                      <div class="preview-badge-live">
+                        <span class="pulse-dot"></span>
+                        <span class="preview-badge-text">Live Preview: Saksi-Saksi & Penutup Salinan Akta</span>
+                      </div>
+                      <span class="badge-customized-pill" id="customBadge-6" style="display: none;">● Redaksional
+                        Khusus</span>
+                    </div>
+                    <div class="section-live-preview-actions">
+                      <button type="button" class="btn-edit-clause" data-section="6"
+                        title="Kustomisasi kalimat & redaksional bagian ini">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.2">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Edit Redaksional
+                      </button>
+                      <button type="button" class="btn-reset-clause" data-section="6" id="btnResetClause-6"
+                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
+                        Reset</button>
+                    </div>
+                  </div>
+                  <div class="section-live-preview-paper" id="sectionSnippet-6"></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- TAB 7: LIVE PREVIEW -->
+            <section id="tab-preview" class="tab-page">
+              <div class="section-card">
+                <div>
+                  <h2 class="card-title">Pratinjau Salinan Akta (Format Notaris)</h2>
+                  <p class="card-desc">Cek seluruh susunan teks sebelum digenerate menjadi file Microsoft Word
+                    (.docx).</p>
+                </div>
+
+                <div id="livePreviewContainer" class="mt-4 notary-multi-page-container">
+                  <!-- Live preview multi-sheet A4 injected here -->
+                </div>
+              </div>
+            </section>
+
+          </form>
+        </main>
+      </div>
+    </div> <!-- end #view-editor -->
+
+    <!-- ==================== VIEW 3: PENGATURAN INDIVIDU / STANDALONE ==================== -->
+    <div id="view-settings" class="app-view" style="display: none;">
+      <!-- Global Top Navbar for Settings -->
+      <nav class="global-nav">
+        <div class="global-nav-left">
+          <button type="button" id="btnBackFromSettings" class="nav-back-btn" title="Kembali ke halaman sebelumnya">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <span id="btnBackFromSettingsText">Beranda</span>
+          </button>
+          <span class="nav-brand-divider"></span>
+          <div class="app-logo">
+            <img src="assets/logoakta.png" alt="Logo NotaryDoc" class="nav-brand-logo-img" />
+          </div>
+          <span class="global-nav-title">NotaryDoc</span>
+        </div>
+
+        <div class="global-nav-center">
+          <div class="doc-context-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+              </path>
+            </svg>
+            <span class="doc-context-text">Pengaturan Notaris &amp; Direktori Berkas</span>
+          </div>
+        </div>
+
+        <div class="global-nav-right">
+          <div class="status-indicators-group">
+            <div class="ai-status-pill clean" title="Preferensi otomatis tersimpan di komputer">
+              <span class="status-dot"></span>
+              <span>Preferensi Sistem</span>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Settings Content Container -->
+      <div class="settings-content-wrapper">
+        <!-- Hero Header -->
+        <div class="settings-hero-header">
+          <div class="settings-hero-text">
+            <div class="dashboard-badge-pill">⚙️ PREFERENSI SISTEM &amp; KANTOR</div>
+            <h1 class="settings-hero-title">Pengaturan Aplikasi &amp; Direktori Berkas</h1>
+            <p class="settings-hero-desc">
+              Kelola konfigurasi identitas kantor notaris default dan folder penyimpanan berkas. Pengaturan ini
+              tersimpan secara lokal dan otomatis diterapkan pada pembuatan akta.
+            </p>
+          </div>
+          <div class="settings-hero-logo-box">
+            <img src="assets/logoakta.png" alt="Logo NotaryDoc" class="dashboard-hero-logo-img" />
+          </div>
+        </div>
+
+        <!-- Card 1: Profil Notaris Default -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <div class="settings-card-icon-pill">
+              <span>⚖️</span>
+            </div>
+            <div>
+              <h2 class="settings-card-title">1. Profil Kantor Notaris Default</h2>
+              <p class="card-desc">Simpan nama dan gelar notaris Anda agar otomatis terisi pada setiap draf akta baru
+                tanpa perlu mengetik ulang.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-2 mt-4">
+            <div class="form-group">
+              <label for="defaultNotarisNama">Nama Lengkap Notaris (Tanpa Gelar) <span class="badge-lock-pill"
+                  id="badgeLockDefaultNotaris" style="display: none;"></span></label>
+              <input type="text" id="defaultNotarisNama" class="form-input"
+                placeholder="Contoh: GRENDI JAYA DARMAWAN" />
+              <div class="terbilang-preview">Ditulis kapital/huruf besar tanpa koma gelar</div>
+            </div>
+            <div class="form-group">
+              <label for="defaultNotarisWilayah">Wilayah Jabatan Notaris Default</label>
+              <input type="text" id="defaultNotarisWilayah" class="form-input" placeholder="Contoh: Kabupaten Kudus" />
+              <div class="terbilang-preview">Wilayah yurisdiksi kedudukan kantor notaris</div>
+            </div>
+          </div>
+
+          <div class="grid grid-2 mt-3">
+            <div class="form-group">
+              <label for="defaultNotarisGelarPanjang">Gelar Lengkap / Dieja (Komparisi Awal Akta)</label>
+              <input type="text" id="defaultNotarisGelarPanjang" class="form-input"
+                placeholder="Contoh: Sarjana Hukum, Magister Kenotariatan"
+                value="Sarjana Hukum, Magister Kenotariatan" />
+              <div class="terbilang-preview">Digunakan pada narasi komparisi penghadapan awal akta</div>
+            </div>
+            <div class="form-group">
+              <label for="defaultNotarisGelarSingkat">Gelar Singkat (Tanda Tangan Akhir Akta)</label>
+              <input type="text" id="defaultNotarisGelarSingkat" class="form-input" placeholder="Contoh: S.H., M.Kn."
+                value="S.H., M.Kn." />
+              <div class="terbilang-preview">Digunakan pada kolom tanda tangan notaris di halaman akhir</div>
+            </div>
+          </div>
+
+          <div class="settings-card-footer mt-4">
+            <button type="button" id="btnSaveDefaultNotaris" class="btn btn-primary"
+              style="font-size: 13px; padding: 10px 22px; font-weight: 600;">
+              Simpan Profil Kantor
+            </button>
+            <span id="saveNotarisSuccess"
+              style="color: #16a34a; font-size: 13px; font-weight: 600; display: none; align-items: center; gap: 6px;">
+              ✓ Profil kantor berhasil disimpan!
+            </span>
+          </div>
+        </div>
+
+        <!-- Card 2: Pengaturan Direktori Penyimpanan Berkas (Terpadu) -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <div class="settings-card-icon-pill">
+              <span>📁</span>
+            </div>
+            <div>
+              <h2 class="settings-card-title">2. Direktori Folder Penyimpanan Berkas</h2>
+              <p class="card-desc">Tentukan lokasi folder tempat seluruh berkas draf (.akta) dan hasil dokumen Word
+                (.docx) diarsipkan secara terpusat di komputer Anda. Jika belum diatur, Windows File Explorer akan
+                otomatis meminta pemilihan folder saat pertama kali Anda menyimpan draf atau mengekspor dokumen.</p>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <div class="form-group" style="max-width: 820px;">
+              <label for="settingDirArchive">Direktori Folder Arsip Berkas (.akta &amp; .docx)</label>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="settingDirArchive" class="form-input" style="flex: 1; min-width: 260px;"
+                  placeholder="Belum diatur (otomatis diminta saat pertama kali simpan)" />
+                <button type="button" id="btnBrowseDirArchive" class="btn btn-secondary"
+                  style="white-space: nowrap; font-size: 13px; padding: 9px 16px; font-weight: 600;"
+                  title="Pilih folder melalui Windows File Explorer">🔍 Pilih Folder</button>
+                <button type="button" id="btnOpenDirArchive" class="btn btn-secondary"
+                  style="white-space: nowrap; font-size: 13px; padding: 9px 14px; font-weight: 600;"
+                  title="Buka folder arsip di Windows Explorer">📁 Buka Folder</button>
+              </div>
+              <div class="terbilang-preview">Lokasi penyimpanan terpadu untuk berkas progres (.akta) dan hasil dokumen
+                Word (.docx)</div>
+            </div>
+          </div>
+
+          <div class="settings-card-footer mt-4">
+            <button type="button" id="btnSaveDirSettings" class="btn btn-primary"
+              style="font-size: 13px; padding: 10px 22px; font-weight: 600;">
+              Simpan Pengaturan Direktori
+            </button>
+            <button type="button" id="btnResetDirSettings" class="btn btn-secondary"
+              style="font-size: 13px; padding: 10px 18px;" title="Kosongkan pengaturan direktori">
+              Kosongkan Direktori
+            </button>
+            <span id="saveDirSuccess"
+              style="color: #16a34a; font-size: 13px; font-weight: 600; display: none; align-items: center; gap: 6px;">
+              ✓ Pengaturan direktori berhasil disimpan!
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div> <!-- end #view-settings -->
+
+    <!-- ==================== CLAUSE CUSTOMIZATION MODAL (EDIT REDAKSIONAL) ==================== -->
+    <div id="clauseModalOverlay" class="app-modal-overlay" style="display: none;" role="dialog" aria-modal="true">
+      <div class="app-modal-backdrop" id="clauseModalBackdrop"></div>
+      <div class="clause-modal-card" id="clauseModalCard">
+        <div class="clause-modal-header">
+          <div class="clause-modal-header-left">
+            <div class="clause-modal-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 id="clauseModalTitle" class="clause-modal-title">Kustomisasi Redaksional Bagian</h3>
+              <p class="clause-modal-subtitle">Sesuaikan kalimat baku / klausula notaris khusus untuk draf aktif ini.
+              </p>
+            </div>
+          </div>
+          <button type="button" id="clauseModalBtnClose" class="btn-close-modal" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="clause-modal-body">
+          <div class="clause-tags-section">
+            <div class="clause-tags-header">
+              <span class="clause-tags-label">Tag Variabel Tersedia (Klik untuk menyisipkan ke kursor):</span>
+            </div>
+            <div id="clauseModalTagsContainer" class="clause-tags-container">
+              <!-- Chips inserted dynamically via JS -->
+            </div>
+          </div>
+
+          <div class="clause-editor-wrapper">
+            <label for="clauseModalTextarea" class="clause-editor-label">Teks Redaksional Klausula:</label>
+            <textarea id="clauseModalTextarea" class="clause-editor-textarea" rows="12" spellcheck="false"
+              placeholder="Tuliskan teks klausula notaris di sini..."></textarea>
+            <div class="clause-editor-hint">
+              <span>💡 <b>Petunjuk:</b> Kata-kata dalam tanda kurung kurawal <code>{...}</code> akan otomatis diisi
+                dengan data dari formulir. Anda bebas mengubah kata-kata pengantar atau menyusun kalimat baru sesuai
+                kebutuhan kantor notaris Anda.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="clause-modal-footer">
+          <div class="clause-modal-footer-left">
+            <button type="button" id="clauseModalBtnReset" class="btn btn-secondary btn-sm"
+              style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">↺ Kembalikan ke Standar UUJN</button>
+          </div>
+          <div class="clause-modal-footer-right">
+            <button type="button" id="clauseModalBtnCancel" class="btn btn-secondary">Batal</button>
+            <button type="button" id="clauseModalBtnApply" class="btn btn-primary">✓ Terapkan ke Draf Ini</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== CUSTOM MODAL NOTIFICATION / ALERT (BLURRED FROSTED BACKDROP) ==================== -->
+    <div id="appModalOverlay" class="app-modal-overlay" style="display: none;" role="dialog" aria-modal="true">
+      <div class="app-modal-backdrop" id="appModalBackdrop"></div>
+      <div class="app-modal-card" id="appModalCard">
+        <div class="app-modal-body">
+          <div id="appModalIcon" class="app-modal-icon-badge info">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </div>
+          <div class="app-modal-content">
+            <h3 id="appModalTitle" class="app-modal-title">Pemberitahuan</h3>
+            <p id="appModalMessage" class="app-modal-message"></p>
+            <div id="appModalDetails" class="app-modal-details" style="display: none;"></div>
+          </div>
+        </div>
+        <div class="app-modal-footer">
+          <button type="button" id="appModalBtnCancel" class="btn-modal-cancel" style="display: none;">Batal</button>
+          <button type="button" id="appModalBtnConfirm" class="btn-modal-confirm">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== DEMO EXPIRED / TRIAL LOCKED OVERLAY ==================== -->
+    <div id="demoExpiredOverlay" class="demo-lock-overlay" style="display: none;" role="dialog" aria-modal="true">
+      <div class="demo-lock-backdrop"></div>
+      <div class="demo-lock-card">
+        <div class="demo-lock-icon">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+        <div class="demo-lock-badge" id="demoLockBadge">MASA UJI COBA BERAKHIR</div>
+        <h2 class="demo-lock-title" id="demoLockTitle">Masa Uji Coba Demo Telah Selesai</h2>
+        <p class="demo-lock-desc" id="demoLockDesc">
+          Terima kasih telah mencoba Aplikasi Generator Akta Notaris Sirkuler. Masa uji coba demo untuk perangkat ini
+          telah berakhir.
+        </p>
+
+        <div class="demo-lock-contact-card">
+          <div class="contact-card-title">Informasi Aktivasi Lisensi Penuh:</div>
+          <div class="contact-row">
+            <span class="contact-label">Nama Kontak</span>
+            <span class="contact-val" id="demoContactName">Pengembang Aplikasi</span>
+          </div>
+          <div class="contact-row">
+            <span class="contact-label">WhatsApp / HP</span>
+            <span class="contact-val highlight" id="demoContactPhone">-</span>
+          </div>
+          <div class="contact-row">
+            <span class="contact-label">Email</span>
+            <span class="contact-val" id="demoContactEmail">-</span>
+          </div>
+        </div>
+
+        <div class="demo-lock-footer-note">
+          💡 Hubungi nomor kontak di atas untuk mendapatkan versi penuh tanpa batas waktu (unlimited).
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- end .app-shell -->
+
+  <script type="module" src="main.js"></script>
+</body>
+
+</html>
