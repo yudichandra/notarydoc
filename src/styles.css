@@ -841,56 +841,49 @@ body {
   flex-shrink: 0;
 }
 
-.workspace {
-  flex: 1;
-  min-height: 0;
+/* Horizontal Step Tab Bar (Compact Top Strip for Split-Screen) */
+.nav-tabs.editor-tab-strip {
   display: flex;
-  gap: 28px;
-  padding: 20px var(--space-lg) 20px;
-  max-width: 1440px;
-  margin: 0 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   width: 100%;
-  overflow: hidden;
+  height: auto;
+  padding: 8px var(--space-lg);
+  background-color: #fbfbfd;
+  border-bottom: 1px solid var(--hairline);
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
   box-sizing: border-box;
 }
 
-/* Sidebar Navigation Tabs (Fixed / Stationary on Left) */
-.nav-tabs {
-  width: 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex-shrink: 0;
-  height: 100%;
-  overflow-y: auto;
-  padding-right: 4px;
+.nav-tabs.editor-tab-strip::-webkit-scrollbar {
+  height: 4px;
 }
 
-.nav-tabs::-webkit-scrollbar {
-  width: 4px;
-}
-
-.nav-tabs::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.12);
+.nav-tabs.editor-tab-strip::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.14);
   border-radius: 9999px;
 }
 
 .tab-item {
   background: transparent;
-  border: none;
-  border-radius: var(--rounded-md);
-  padding: 11px 16px;
-  display: flex;
+  border: 1px solid transparent;
+  border-radius: var(--rounded-pill);
+  padding: 7px 14px;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   cursor: pointer;
   color: var(--ink-muted-80);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   letter-spacing: -0.224px;
   transition: all 0.15s ease-out;
   text-align: left;
-  width: 100%;
+  width: auto;
+  flex-shrink: 0;
   outline: none;
 }
 
@@ -907,12 +900,13 @@ body {
   background-color: var(--canvas);
   color: var(--primary);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 102, 204, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 102, 204, 0.08);
 }
 
 .tab-num {
-  width: 22px;
-  height: 22px;
+  width: 21px;
+  height: 21px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -930,33 +924,88 @@ body {
   color: #ffffff;
 }
 
-/* Content Area (Scrollable Form Inputs & Live Preview) */
-.content-panel {
+/* Split-Screen Workspace (Left: Form | Right: Sticky Full Live Preview) */
+.workspace.split-workspace {
   flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(420px, 46%) minmax(460px, 54%);
+  gap: 16px;
+  padding: 14px 20px;
+  max-width: 1800px;
+  margin: 0 auto;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Left Split Pane: Scrollable Form Inputs */
+.content-panel.split-form-pane {
+  flex: none;
   min-width: 0;
   height: 100%;
   overflow-y: auto;
-  padding-right: 14px;
-  padding-bottom: 80px;
+  padding-right: 8px;
+  padding-bottom: 60px;
   scroll-behavior: smooth;
 }
 
-/* Apple Sleek Scrollbar for Content Panel */
-.content-panel::-webkit-scrollbar {
-  width: 7px;
+.split-form-pane .section-card {
+  padding: 22px 24px;
 }
 
-.content-panel::-webkit-scrollbar-track {
+.split-form-pane .card-title {
+  font-size: 19px;
+}
+
+.split-form-pane .card-desc {
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+
+.split-form-pane .sub-card {
+  padding: 16px 18px;
+  margin-top: 16px;
+}
+
+/* On narrow split panes (<1480px), make 3-col grids 2-col so inputs never squash */
+@media (max-width: 1480px) {
+  .split-form-pane .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Expand Preview Mode (Full Width Live Preview) */
+#view-editor.preview-expanded .editor-tab-strip,
+#view-editor.preview-expanded .split-form-pane {
+  display: none;
+}
+
+#view-editor.preview-expanded .workspace.split-workspace {
+  grid-template-columns: 1fr;
+}
+
+/* Apple Sleek Scrollbar for Content Panel & Preview Scroll */
+.content-panel::-webkit-scrollbar,
+.preview-pane-scroll::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.content-panel::-webkit-scrollbar-track,
+.preview-pane-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.content-panel::-webkit-scrollbar-thumb {
+.content-panel::-webkit-scrollbar-thumb,
+.preview-pane-scroll::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.18);
   border-radius: 9999px;
   transition: background-color 0.2s ease;
 }
 
-.content-panel::-webkit-scrollbar-thumb:hover {
+.content-panel::-webkit-scrollbar-thumb:hover,
+.preview-pane-scroll::-webkit-scrollbar-thumb:hover {
   background-color: rgba(0, 0, 0, 0.35);
 }
 
@@ -2957,6 +3006,496 @@ label {
   border-color: #cbd5e1 !important;
   box-shadow: none !important;
 }
+
+/* ==========================================================================
+   13. Split-Screen Live Preview Pane, Highlight & Multi-Location Navigation
+   ========================================================================== */
+.live-preview-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  background-color: #eef1f5;
+  border: 1px solid var(--hairline);
+  border-radius: var(--rounded-lg);
+  overflow: hidden;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.preview-pane-header {
+  background-color: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--hairline);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.preview-pane-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview-toolbar-left,
+.preview-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview-page-count-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 3px 9px;
+  border-radius: var(--rounded-pill);
+}
+
+.preview-doc-mode-switcher {
+  display: inline-flex;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--rounded-pill);
+  padding: 2px;
+  gap: 2px;
+}
+
+.preview-mode-btn {
+  background: transparent;
+  border: none;
+  border-radius: var(--rounded-pill);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preview-mode-btn.active {
+  background-color: #ffffff;
+  color: var(--primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.preview-zoom-group {
+  display: inline-flex;
+  align-items: center;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--rounded-pill);
+  padding: 2px;
+  gap: 2px;
+}
+
+.preview-zoom-btn {
+  background: transparent;
+  border: none;
+  border-radius: var(--rounded-pill);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preview-zoom-btn.active {
+  background-color: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.preview-expand-btn {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  width: 28px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preview-expand-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background-color: #eff6ff;
+}
+
+/* Multi-Location Highlight & Jump Bar */
+.preview-location-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-height: 30px;
+  box-sizing: border-box;
+}
+
+.location-hint-muted {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.location-field-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e40af;
+  background-color: #dbeafe;
+  border: 1px solid #bfdbfe;
+  padding: 2px 8px;
+  border-radius: var(--rounded-pill);
+}
+
+.location-meta-label {
+  font-size: 11px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.location-jump-pill {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--rounded-pill);
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.location-jump-pill:hover {
+  border-color: var(--primary);
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* Clause Customization Dropdown in Right Pane */
+.clause-dropdown-wrapper {
+  position: relative;
+}
+
+.badge-customized-count {
+  background-color: #16a34a;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.clause-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 330px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  padding: 10px;
+  z-index: 100;
+}
+
+.clause-dropdown-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 6px;
+}
+
+.clause-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clause-dropdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.clause-dropdown-row:hover {
+  background-color: #f8fafc;
+}
+
+.clause-dropdown-edit-btn {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.clause-dropdown-edit-btn:hover {
+  color: var(--primary);
+}
+
+.clause-sec-chip {
+  font-size: 10px;
+  font-weight: 700;
+  background-color: #e2e8f0;
+  color: #334155;
+  padding: 1px 6px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.clause-custom-dot {
+  font-size: 10px;
+  font-weight: 700;
+  color: #16a34a;
+  background-color: #dcfce7;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+/* Scrollable Paper Container inside Right Pane */
+.preview-pane-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 14px 40px;
+}
+
+.preview-pane-scroll .notary-multi-page-container {
+  padding-bottom: 24px;
+}
+
+.preview-zoom-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  transform-origin: top center;
+}
+
+.live-preview-pane .notary-page-wrapper {
+  margin-bottom: 28px;
+}
+
+.live-preview-pane .notary-paper {
+  margin: 8px auto 0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+/* Interactive Lines & Highlighting inside .notary-paper */
+.notary-line {
+  position: relative;
+  border-radius: 3px;
+  transition: background-color 0.18s ease;
+}
+
+.notary-line.preview-line-active-field {
+  background-color: rgba(254, 240, 138, 0.42);
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.notary-line.preview-line-flash {
+  animation: previewLineFlash 1.4s ease-out;
+}
+
+@keyframes previewLineFlash {
+  0% { background-color: rgba(59, 130, 246, 0.45); box-shadow: inset 4px 0 0 #2563eb; }
+  100% { background-color: rgba(254, 240, 138, 0.42); box-shadow: inset 3px 0 0 #f59e0b; }
+}
+
+.preview-field-mark {
+  background-color: #fde047;
+  color: #0f172a;
+  padding: 0 1px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.65);
+}
+
+/* Renvoi Margin Gutter Section Pill & Direct Edit Redaksional Button (UI Only) */
+.renvoi-section-control {
+  position: absolute;
+  left: -234px;
+  top: 2px;
+  width: 218px;
+  white-space: normal;
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.25;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  user-select: none;
+  z-index: 5;
+}
+
+.renvoi-section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.renvoi-section-badge.is-custom {
+  border-color: #86efac;
+  background-color: #f0fdf4;
+  color: #15803d;
+}
+
+.renvoi-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.72;
+  transition: opacity 0.15s ease;
+}
+
+.notary-paper:hover .renvoi-section-actions,
+.renvoi-section-control:hover .renvoi-section-actions {
+  opacity: 1;
+}
+
+.renvoi-btn-edit,
+.renvoi-btn-reset {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.renvoi-btn-edit:hover {
+  background-color: #eff6ff;
+  border-color: var(--primary);
+}
+
+.renvoi-btn-reset {
+  color: #dc2626;
+  border-color: #fecaca;
+  background-color: #fff1f2;
+}
+
+.renvoi-btn-reset:hover {
+  background-color: #ffe4e6;
+}
+
+/* Internal Document Live Preview Paper (Bookman / Georgia + Tables) */
+.internal-doc-paper {
+  background-color: #ffffff;
+  color: #111827;
+  width: 794px;
+  min-width: 794px;
+  max-width: 794px;
+  box-sizing: border-box;
+  padding: 56px 64px;
+  border-radius: var(--rounded-sm);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+  border: 1px solid var(--hairline);
+  font-size: 11pt;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.internal-doc-para {
+  margin: 0 0 8px 0;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.internal-doc-para.preview-line-active-field {
+  background-color: rgba(254, 240, 138, 0.42);
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.internal-doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0 14px 0;
+  font-size: 10pt;
+}
+
+.internal-doc-table th,
+.internal-doc-table td {
+  border: 1px solid #475569;
+  padding: 6px 8px;
+}
+
+.internal-doc-table th {
+  background-color: #f3f4f6;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Responsive Fallback for Narrow Windows (<980px) */
+@media (max-width: 980px) {
+  .workspace.split-workspace {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .content-panel.split-form-pane,
+  .live-preview-pane {
+    height: auto;
+    min-height: 460px;
+  }
+}
+
 
 
 

@@ -12,6 +12,66 @@ export const SECTION_NAMES = {
   6: 'Klausula Penutup, Saksi & Legalisir Salinan'
 };
 
+export const DEED_SECTION_ORDER = [1, 3, 2, 4, 5, 6];
+
+export const PLACEHOLDER_TO_FIELD_KEYS = {
+  '{NOMOR_AKTA}': ['aktaNomor'],
+  '{HARI_TANGGAL_AKTA}': ['aktaTanggal'],
+  '{JAM_AKTA}': ['aktaJam'],
+  '{NAMA_NOTARIS}': ['notarisNama'],
+  '{GELAR_PANJANG_NOTARIS}': ['notarisGelarPanjang'],
+  '{GELAR_SINGKAT_NOTARIS}': ['notarisGelarSingkat'],
+  '{WILAYAH_NOTARIS}': ['notarisWilayah'],
+  '{WILAYAH_NOTARIS_KAP}': ['notarisWilayah'],
+  '{NAMA_ENTITAS}': ['ptNama'],
+  '{KEDUDUKAN_ENTITAS}': ['ptKedudukan'],
+  '{JABATAN_PENGHADAP}': ['penghadapJabatan'],
+  '{SAPAAN_PENGHADAP}': ['penghadapSapaan'],
+  '{NAMA_PENGHADAP}': ['penghadapNama'],
+  '{TEMPAT_LAHIR_PENGHADAP}': ['penghadapTempatLahir'],
+  '{TGL_LAHIR_PENGHADAP}': ['penghadapTanggalLahir'],
+  '{WN_PENGHADAP}': ['penghadapWn'],
+  '{PEKERJAAN_PENGHADAP}': ['penghadapPekerjaan'],
+  '{ALAMAT_PENGHADAP}': ['penghadapAlamat'],
+  '{NIK_PENGHADAP}': ['penghadapNik'],
+  '{NO_AKTA_PENDIRIAN}': ['ptAktaPendirianNomor'],
+  '{TGL_AKTA_PENDIRIAN}': ['ptAktaPendirianTgl'],
+  '{NOTARIS_PENDIRIAN}': ['ptAktaPendirianNotaris'],
+  '{WILAYAH_NOTARIS_PENDIRIAN}': ['ptAktaPendirianWilayah'],
+  '{NO_SK_PENDIRIAN}': ['ptSkPendirianNomor'],
+  '{TGL_SK_PENDIRIAN}': ['ptSkPendirianTgl'],
+  '{NO_AKTA_PERUBAHAN}': ['ptAktaPerubahanNomor'],
+  '{TGL_AKTA_PERUBAHAN}': ['ptAktaPerubahanTgl'],
+  '{NOTARIS_PERUBAHAN_DENGAN_WILAYAH}': ['ptAktaPerubahanNotaris', 'ptAktaPerubahanWilayah'],
+  '{NO_SK_PERUBAHAN}': ['ptSkPerubahanNomor'],
+  '{TGL_SK_PERUBAHAN}': ['ptSkPerubahanTgl'],
+  '{NO_PEMBERITAHUAN_PERUBAHAN}': ['ptPemberitahuanPerubahanNomor'],
+  '{PASAL_SIRKULER}': ['ptPasalSirkuler'],
+  '{TOTAL_SAHAM_A}': ['totalSahamSeriA'],
+  '{TOTAL_SAHAM_B}': ['totalSahamSeriB'],
+  '{TOTAL_MODAL_INBRENG}': ['totalModalNominal'],
+  '{HARI_TANGGAL_RUPS}': ['rupsTanggal'],
+  '{JAM_RUPS}': ['rupsJam'],
+  '{TEMPAT_RUPS}': ['rupsTempat'],
+  '{PIMPINAN_RUPS}': ['rupsPimpinan'],
+  '{TOTAL_SAHAM_HADIR_RUPS}': ['rupsSahamHadir'],
+  '{MODAL_SEMULA_NOMINAL}': ['modalSemulaNominal'],
+  '{MODAL_SEMULA_SAHAM}': ['modalSemulaSaham'],
+  '{MODAL_MENJADI_NOMINAL}': ['modalMenjadiNominal'],
+  '{MODAL_MENJADI_SAHAM}': ['modalMenjadiSaham'],
+  '{TOTAL_SAHAM_MENJADI}': ['modalMenjadiSaham'],
+  '{JML_SAHAM_DIKELUARKAN}': ['sahamSimpananDikeluarkanJml'],
+  '{NOMINAL_SAHAM_DIKELUARKAN}': ['sahamSimpananDikeluarkanNominal'],
+  '{NAMA_PENGAMBIL_BAGIAN}': ['pengambilNama', 'pengambilKedudukan', 'pengambilAktaPendirian', 'pengambilAktaPerubahan'],
+  '{NAMA_PELEPAS_HAK}': ['pelepasanNama', 'pelepasanKedudukan', 'pelepasanLegalitas'],
+  '{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}': ['pemegangSahamModal'],
+  '{MASA_JABATAN}': ['masaJabatan'],
+  '{RINCIAN_SUSUNAN_PENGURUS_BARU}': ['pengurusBaru'],
+  '{RINCIAN_DAFTAR_PEMEGANG_SAHAM_SEKUTU}': ['pemegangSaham', 'sekutu'],
+  '{SAKSI_1_LENGKAP}': ['saksi1'],
+  '{SAKSI_2_LENGKAP}': ['saksi2']
+};
+
 /**
  * Daftar Tag / Placeholder yang tersedia per Bagian
  */
@@ -640,4 +700,41 @@ export function renderTemplateTextToLines(renderedText, maxChars = 53, formatTex
 
   return lines;
 }
+
+/**
+ * Merender teks template kustom sekaligus menyematkan metadata fieldKeys per baris
+ * berdasarkan tag placeholder {...} di tiap baris template.
+ */
+export function renderCustomTemplateSectionToLines(templateStr, data, sectionNum, maxChars = 53, formatTextToNotaryLinesFn, isPreview = false) {
+  const lines = [];
+  if (!templateStr) return lines;
+  const map = buildPlaceholderMap(data, sectionNum, isPreview);
+  const rawParagraphs = templateStr.split('\n');
+
+  for (const rawTplLine of rawParagraphs) {
+    if (!rawTplLine.trim()) continue;
+    const fieldKeySet = new Set();
+    const matches = rawTplLine.match(/\{[A-Z0-9_]+\}/g) || [];
+    for (const tag of matches) {
+      const keys = PLACEHOLDER_TO_FIELD_KEYS[tag];
+      if (keys) keys.forEach(k => fieldKeySet.add(k));
+    }
+
+    let resolvedLine = rawTplLine;
+    for (const [tag, replacement] of Object.entries(map)) {
+      if (resolvedLine.includes(tag)) {
+        resolvedLine = resolvedLine.split(tag).join(replacement);
+      }
+    }
+
+    const rendered = renderTemplateTextToLines(resolvedLine, maxChars, formatTextToNotaryLinesFn);
+    const fieldKeys = Array.from(fieldKeySet);
+    rendered.forEach(l => {
+      lines.push({ ...l, sectionNum, fieldKeys });
+    });
+  }
+
+  return lines;
+}
+
 

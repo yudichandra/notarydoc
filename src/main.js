@@ -2,6 +2,7 @@ import {
   terbilang,
   formatTanggalAkta,
   formatTanggalBiasa,
+  formatTanggalTanpaAwalan,
   formatJamAkta,
   formatSaham,
   formatRupiah
@@ -9,14 +10,20 @@ import {
 import {
   validasiDataAkta
 } from './utils/spellcheck.js';
-import { generateAktaWord, exportInternalDocx, formatTextToNotaryLines, generateNotaryPages, buildSectionDeedLines } from './utils/docGenerator.js';
+import {
+  generateAktaWord,
+  exportInternalDocx,
+  generateNotaryPages,
+  buildInternalDocModel
+} from './utils/docGenerator.js';
 import {
   SECTION_NAMES,
+  DEED_SECTION_ORDER,
   getAvailablePlaceholders,
   getDefaultClauseTemplate
 } from './utils/clauseTemplates.js';
 import { DEMO_CONFIG } from './demoConfig.js';
-import { initDemoTrial, isDemoLocked, showDemoLockOverlay } from './utils/demoTrial.js';
+import { initDemoTrial } from './utils/demoTrial.js';
 import fileSaver from 'file-saver';
 const saveAs = fileSaver.saveAs || fileSaver;
 
@@ -31,7 +38,12 @@ const state = {
   currentDraftFilePath: null, // Jalur berkas draf yang sedang aktif di disk
   customTemplates: {}, // Template redaksional khusus draf aktif: { section1: "...", ... }
   currentModalSection: null,
-  previousView: 'dashboard' // 'dashboard' | 'editor'
+  previousView: 'dashboard', // 'dashboard' | 'editor'
+  activeFieldKey: null, // Kunci field input yang sedang difokuskan / disorot
+  activeFieldLabel: null, // Label input yang sedang disorot
+  previewMode: 'deed', // 'deed' | 'internal'
+  previewZoomMode: 'fit', // 'fit' | '0.85' | '1'
+  isPreviewExpanded: false // Mode perbesar panel preview kanan
 };
 
 // 1. DATA DEMO PT (Sesuai File Asli Notaris Klien - Perubahan Pengurus)
@@ -966,6 +978,10 @@ function switchView(viewName) {
     if (vEdit) vEdit.style.display = 'flex';
     if (vSett) vSett.style.display = 'none';
     state.previousView = 'editor';
+    requestAnimationFrame(() => {
+      renderLivePreview();
+      applyPreviewZoom();
+    });
   } else if (viewName === 'settings') {
     document.body.style.overflow = '';
     if (vDash) vDash.style.display = 'none';
@@ -1004,8 +1020,22 @@ function updateActiveDraftUI(filePath = null) {
   }
 }
 
+function resetSplitPreviewState() {
+  state.activeFieldKey = null;
+  state.activeFieldLabel = null;
+  state.previewMode = 'deed';
+  state.isPreviewExpanded = false;
+  const viewEditor = document.getElementById('view-editor');
+  if (viewEditor) viewEditor.classList.remove('preview-expanded');
+  const btnExpand = document.getElementById('btnToggleExpandPreview');
+  if (btnExpand) btnExpand.textContent = '⤢';
+  const scrollEl = document.getElementById('previewPaneScroll');
+  if (scrollEl) scrollEl.scrollTop = 0;
+}
+
 function startNewDraft(entityType, subType = null) {
   resetFormFields(true);
+  resetSplitPreviewState();
   if (entityType === 'PT') {
     state.ptSubType = subType || 'SIRKULER_PENGURUS';
   }
@@ -1020,7 +1050,7 @@ function startNewDraft(entityType, subType = null) {
     }
   }
   updateActiveDraftUI(null);
-  renderAllSectionPreviews();
+  renderLivePreview();
   setDraftSavedStatus(false);
   switchView('editor');
   switchToTab('tab-akta');
@@ -1035,6 +1065,7 @@ async function openDraftFromPath(filePath) {
     }
     if (!jsonContent) throw new Error('Berkas kosong atau tidak dapat diakses.');
     const parsed = JSON.parse(jsonContent);
+    resetSplitPreviewState();
     loadDataToForm(parsed);
     updateActiveDraftUI(filePath);
     setDraftSavedStatus(true);
@@ -1598,6 +1629,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupActionButtons();
   setupProgressSaveAndLoad();
   setupDirectorySettings();
+  setupSplitPreviewControls();
   setupSectionLivePreviewListeners();
   setupClauseCustomizationModal();
   setupDashboard();
@@ -1645,9 +1677,20 @@ function switchEntityType(type, autoLoadDemo = false, subType = null) {
   }
 
   // Update tombol dokumen internal (hanya untuk PT Peningkatan Modal & RUPS)
+  const isModalOrRups = type === 'PT' && (state.ptSubType === 'SIRKULER_MODAL' || state.ptSubType === 'RUPS_MODAL');
   const btnExportInternalDoc = document.getElementById('btnExportInternalDoc');
   if (btnExportInternalDoc) {
-    btnExportInternalDoc.style.display = (type === 'PT' && (state.ptSubType === 'SIRKULER_MODAL' || state.ptSubType === 'RUPS_MODAL')) ? 'inline-flex' : 'none';
+    btnExportInternalDoc.style.display = isModalOrRups ? 'inline-flex' : 'none';
+  }
+  const previewModeSwitcher = document.getElementById('previewDocModeSwitcher');
+  if (previewModeSwitcher) {
+    previewModeSwitcher.style.display = isModalOrRups ? 'inline-flex' : 'none';
+    if (!isModalOrRups && state.previewMode === 'internal') {
+      state.previewMode = 'deed';
+    }
+    previewModeSwitcher.querySelectorAll('.preview-mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === state.previewMode);
+    });
   }
 
   // Update badge jenis badan usaha aktif di header form
@@ -1801,55 +1844,35 @@ function switchEntityType(type, autoLoadDemo = false, subType = null) {
 
   checkOverallConsistency();
   applyNotaryNameLock();
-
-  const previewTab = document.getElementById('tab-preview');
-  if (previewTab && previewTab.classList.contains('active')) {
-    renderLivePreview();
-  }
+  renderLivePreview();
 }
 
 // Pindah ke Tab Tertentu Secara Terprogram
 function switchToTab(targetId) {
-  document.querySelectorAll('.tab-item').forEach(t => {
-    if (t.dataset.tab === targetId) t.classList.add('active');
+  const safeTargetId = document.getElementById(targetId) ? targetId : 'tab-akta';
+  document.querySelectorAll('#editorTabBar .tab-item').forEach(t => {
+    if (t.dataset.tab === safeTargetId) t.classList.add('active');
     else t.classList.remove('active');
   });
   document.querySelectorAll('.tab-page').forEach(p => {
-    if (p.id === targetId) p.classList.add('active');
+    if (p.id === safeTargetId) p.classList.add('active');
     else p.classList.remove('active');
   });
 
-  const contentPanel = document.querySelector('#view-editor .content-panel');
+  const contentPanel = document.getElementById('splitFormPane');
   if (contentPanel) {
     contentPanel.scrollTop = 0;
-  }
-
-  if (targetId === 'tab-preview') {
-    renderLivePreview();
-  } else {
-    renderAllSectionPreviews();
   }
 }
 
 // Setup Navigasi Tab
 function setupTabNavigation() {
-  const tabs = document.querySelectorAll('.tab-item');
+  const tabs = document.querySelectorAll('#editorTabBar .tab-item');
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       switchToTab(tab.dataset.tab);
     });
   });
-
-  // Teruskan scroll roda mouse dari sidebar menu ke panel konten formulir
-  const navTabs = document.querySelector('#view-editor .nav-tabs');
-  const contentPanel = document.querySelector('#view-editor .content-panel');
-  if (navTabs && contentPanel) {
-    navTabs.addEventListener('wheel', (e) => {
-      if (navTabs.scrollHeight <= navTabs.clientHeight) {
-        contentPanel.scrollTop += e.deltaY;
-      }
-    }, { passive: true });
-  }
 }
 
 // Setup Live Preview Terbilang
@@ -1932,39 +1955,42 @@ function checkOverallConsistency() {
   }
 }
 
+// Helper seragam untuk menyinkronkan preview & autosave saat baris dinamis diubah/dihapus
+function wireDynamicRowEvents(rowEl) {
+  const btnDel = rowEl.querySelector('.btn-delete');
+  if (btnDel) {
+    btnDel.addEventListener('click', () => {
+      rowEl.remove();
+      checkOverallConsistency();
+      renderLivePreview();
+      triggerAutoSave();
+    });
+  }
+  rowEl.querySelectorAll('input, select, textarea').forEach(el => {
+    el.addEventListener('input', () => checkOverallConsistency());
+    el.addEventListener('change', () => checkOverallConsistency());
+  });
+}
+
 // Tambah / Hapus Baris Dinamis (Pemegang Saham PT, Sekutu CV/Firma/UD, & Pengurus)
 function setupDynamicRowActions() {
-  const btnAddPemegang = document.getElementById('btnAddPemegangSaham');
-  if (btnAddPemegang) {
-    btnAddPemegang.addEventListener('click', () => {
-      tambahBarisPemegangSaham();
-      checkOverallConsistency();
-    });
-  }
-
-  const btnAddPemegangModal = document.getElementById('btnAddPemegangSahamModal');
-  if (btnAddPemegangModal) {
-    btnAddPemegangModal.addEventListener('click', () => {
-      tambahBarisPemegangSahamModal();
-      checkOverallConsistency();
-    });
-  }
-
-  const btnAddSekutu = document.getElementById('btnAddSekutu');
-  if (btnAddSekutu) {
-    btnAddSekutu.addEventListener('click', () => {
-      tambahBarisSekutu();
-      checkOverallConsistency();
-    });
-  }
-
-  const btnAddPengurus = document.getElementById('btnAddPengurus');
-  if (btnAddPengurus) {
-    btnAddPengurus.addEventListener('click', () => {
-      tambahBarisPengurus();
-      checkOverallConsistency();
-    });
-  }
+  const bindings = [
+    ['btnAddPemegangSaham', () => tambahBarisPemegangSaham()],
+    ['btnAddPemegangSahamModal', () => tambahBarisPemegangSahamModal()],
+    ['btnAddSekutu', () => tambahBarisSekutu()],
+    ['btnAddPengurus', () => tambahBarisPengurus()]
+  ];
+  bindings.forEach(([id, addFn]) => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        addFn();
+        checkOverallConsistency();
+        renderLivePreview();
+        triggerAutoSave();
+      });
+    }
+  });
 }
 
 // 1. Baris Pemegang Saham (Khusus PT)
@@ -2014,15 +2040,7 @@ function tambahBarisPemegangSaham(data = null) {
     </div>
   `;
 
-  div.querySelector('.btn-delete').addEventListener('click', () => {
-    div.remove();
-    checkOverallConsistency();
-  });
-
-  div.querySelectorAll('input').forEach(input => {
-    input.addEventListener('input', () => checkOverallConsistency());
-  });
-
+  wireDynamicRowEvents(div);
   container.appendChild(div);
 }
 
@@ -2068,19 +2086,7 @@ function tambahBarisPemegangSahamModal(data = null) {
     </div>
   `;
 
-  div.querySelector('.btn-delete').addEventListener('click', () => {
-    div.remove();
-    checkOverallConsistency();
-    renderAllSectionPreviews();
-  });
-
-  div.querySelectorAll('input').forEach(input => {
-    input.addEventListener('input', () => {
-      checkOverallConsistency();
-      renderAllSectionPreviews();
-    });
-  });
-
+  wireDynamicRowEvents(div);
   container.appendChild(div);
 }
 
@@ -2140,15 +2146,7 @@ function tambahBarisSekutu(data = null) {
     </div>
   `;
 
-  div.querySelector('.btn-delete').addEventListener('click', () => {
-    div.remove();
-    checkOverallConsistency();
-  });
-
-  div.querySelectorAll('input').forEach(input => {
-    input.addEventListener('input', () => checkOverallConsistency());
-  });
-
+  wireDynamicRowEvents(div);
   container.appendChild(div);
 }
 
@@ -2249,15 +2247,7 @@ function tambahBarisPengurus(data = null) {
     </div>
   `;
 
-  div.querySelector('.btn-delete').addEventListener('click', () => {
-    div.remove();
-    checkOverallConsistency();
-  });
-
-  div.querySelectorAll('input, select, textarea').forEach(el => {
-    el.addEventListener('input', () => checkOverallConsistency());
-  });
-
+  wireDynamicRowEvents(div);
   container.appendChild(div);
 }
 
@@ -2975,62 +2965,459 @@ function kumpulkanDataForm() {
   };
 }
 
-// Render Live Preview Akta di Tab 7
-// Render Live Preview Akta di Tab 7 (Simulasi Realistis Multi-Halaman A4 Standar Notaris)
-function renderLivePreview() {
-  const d = kumpulkanDataForm();
-  const container = document.getElementById('livePreviewContainer');
-  if (!container) return;
+const SECTION_SHORT_NAMES = {
+  1: 'Kepala Akta',
+  2: 'Riwayat & Legalitas',
+  3: 'Data Penghadap',
+  4: 'Modal & Keputusan',
+  5: 'Pengurus / Pasal 4',
+  6: 'Penutup & Saksi'
+};
 
-  const spacingVal = d.layout?.spacing || 2.0;
+const FIELD_HIGHLIGHT_MAP = {
+  aktaNomor: { key: 'aktaNomor', label: 'Nomor Akta', terms: d => [d.akta?.nomor] },
+  aktaTanggal: { key: 'aktaTanggal', label: 'Tanggal Akta', terms: d => [formatTanggalAkta(d.akta?.tanggal), formatTanggalBiasa(d.akta?.tanggal)] },
+  aktaJam: { key: 'aktaJam', label: 'Jam Penghadapan', terms: d => [formatJamAkta(d.akta?.jam)] },
+  notarisNama: {
+    key: 'notarisNama',
+    label: 'Nama Notaris',
+    terms: d => {
+      const raw = (d.notaris?.nama || '').trim();
+      const clean = raw.includes(',') ? raw.split(',')[0].trim() : raw;
+      return [clean.toUpperCase(), raw];
+    }
+  },
+  notarisWilayah: {
+    key: 'notarisWilayah',
+    label: 'Wilayah Notaris',
+    terms: d => {
+      const w = (d.notaris?.wilayah || '').trim();
+      return [w, w.toUpperCase(), w.replace(/Kabupaten|Kota/i, '').trim()];
+    }
+  },
+  notarisGelarPanjang: { key: 'notarisGelarPanjang', label: 'Gelar Panjang Notaris', terms: d => [d.notaris?.gelarPanjang] },
+  notarisGelarSingkat: { key: 'notarisGelarSingkat', label: 'Gelar Singkat Notaris', terms: d => [d.notaris?.gelarSingkat] },
+  ptNama: { key: 'ptNama', label: 'Nama Perusahaan', terms: d => [d.pt?.nama, (d.pt?.nama || '').toUpperCase()] },
+  ptKedudukan: { key: 'ptKedudukan', label: 'Kedudukan Perusahaan', terms: d => [d.pt?.kedudukan, (d.pt?.kedudukan || '').toUpperCase()] },
+  ptAktaPendirianNomor: { key: 'ptAktaPendirianNomor', label: 'No. Akta Pendirian', terms: d => [d.pt?.aktaPendirianNomor] },
+  ptAktaPendirianTgl: { key: 'ptAktaPendirianTgl', label: 'Tgl. Akta Pendirian', terms: d => [formatTanggalTanpaAwalan(d.pt?.aktaPendirianTgl)] },
+  ptAktaPendirianNotaris: { key: 'ptAktaPendirianNotaris', label: 'Notaris Pendirian', terms: d => [d.pt?.aktaPendirianNotaris] },
+  ptAktaPendirianWilayah: { key: 'ptAktaPendirianWilayah', label: 'Wilayah Notaris Pendirian', terms: d => [d.pt?.aktaPendirianWilayah] },
+  ptSkPendirianNomor: { key: 'ptSkPendirianNomor', label: 'No. SK Pendirian', terms: d => [d.pt?.skPendirianNomor] },
+  ptSkPendirianTgl: { key: 'ptSkPendirianTgl', label: 'Tgl. SK Pendirian', terms: d => [formatTanggalTanpaAwalan(d.pt?.skPendirianTgl)] },
+  ptAktaPerubahanNomor: { key: 'ptAktaPerubahanNomor', label: 'No. Akta Perubahan', terms: d => [d.pt?.aktaPerubahanNomor] },
+  ptAktaPerubahanTgl: { key: 'ptAktaPerubahanTgl', label: 'Tgl. Akta Perubahan', terms: d => [formatTanggalTanpaAwalan(d.pt?.aktaPerubahanTgl)] },
+  ptAktaPerubahanNotaris: { key: 'ptAktaPerubahanNotaris', label: 'Notaris Perubahan', terms: d => [d.pt?.aktaPerubahanNotaris] },
+  ptAktaPerubahanWilayah: { key: 'ptAktaPerubahanWilayah', label: 'Wilayah Notaris Perubahan', terms: d => [d.pt?.aktaPerubahanWilayah] },
+  ptSkPerubahanNomor: { key: 'ptSkPerubahanNomor', label: 'No. SK Perubahan', terms: d => [d.pt?.skPerubahanNomor] },
+  ptSkPerubahanTgl: { key: 'ptSkPerubahanTgl', label: 'Tgl. SK Perubahan', terms: d => [formatTanggalTanpaAwalan(d.pt?.skPerubahanTgl)] },
+  ptPemberitahuanPerubahanNomor: { key: 'ptPemberitahuanPerubahanNomor', label: 'No. Penerimaan AHU', terms: d => [d.pt?.pemberitahuanPerubahanNomor] },
+  ptPasalSirkuler: { key: 'ptPasalSirkuler', label: 'Pasal Sirkuler AD', terms: d => [d.pt?.pasalSirkuler] },
+  penghadapSapaan: { key: 'penghadapSapaan', label: 'Sapaan Penghadap', terms: d => [d.penghadap?.sapaan] },
+  penghadapNama: { key: 'penghadapNama', label: 'Nama Penghadap', terms: d => [d.penghadap?.nama] },
+  penghadapTempatLahir: { key: 'penghadapTempatLahir', label: 'Tempat Lahir Penghadap', terms: d => [d.penghadap?.tempatLahir] },
+  penghadapTanggalLahir: { key: 'penghadapTanggalLahir', label: 'Tgl. Lahir Penghadap', terms: d => [formatTanggalBiasa(d.penghadap?.tanggalLahir)] },
+  penghadapNik: { key: 'penghadapNik', label: 'NIK Penghadap', terms: d => [d.penghadap?.nik] },
+  penghadapPekerjaan: { key: 'penghadapPekerjaan', label: 'Pekerjaan Penghadap', terms: d => [d.penghadap?.pekerjaan] },
+  penghadapWn: { key: 'penghadapWn', label: 'Kewarganegaraan Penghadap', terms: d => [d.penghadap?.kewarganegaraan] },
+  penghadapJabatan: { key: 'penghadapJabatan', label: 'Jabatan Penghadap', terms: d => [d.penghadap?.jabatan] },
+  penghadapAlamat: { key: 'penghadapAlamat', label: 'Alamat Penghadap', terms: d => [d.penghadap?.alamat] },
+  totalSahamSeriA: { key: 'totalSahamSeriA', label: 'Total Saham Seri-A', terms: d => [d.saham?.totalSeriA ? formatSaham(d.saham.totalSeriA) : ''] },
+  totalSahamSeriB: { key: 'totalSahamSeriB', label: 'Total Saham Seri-B', terms: d => [d.saham?.totalSeriB ? formatSaham(d.saham.totalSeriB) : ''] },
+  totalModalNominal: { key: 'totalModalNominal', label: 'Total Modal Inbreng', terms: d => [d.modal?.totalNominal ? formatRupiah(d.modal.totalNominal) : ''] },
+  rupsTanggal: { key: 'rupsTanggal', label: 'Tanggal RUPS', terms: d => [formatTanggalAkta(d.rups?.tanggal), formatTanggalBiasa(d.rups?.tanggal)] },
+  rupsJam: { key: 'rupsJam', label: 'Jam RUPS', terms: d => [d.rups?.jam] },
+  rupsPimpinan: { key: 'rupsPimpinan', label: 'Pimpinan Rapat', terms: d => [d.rups?.pimpinan, d.penghadap?.nama] },
+  rupsTempat: { key: 'rupsTempat', label: 'Tempat RUPS', terms: d => [d.rups?.tempat] },
+  rupsSahamHadir: { key: 'rupsSahamHadir', label: 'Kuorum RUPS', terms: d => [d.rups?.sahamHadir ? formatSaham(d.rups.sahamHadir) : ''] },
+  modalSemulaNominal: { key: 'modalSemulaNominal', label: 'Modal Semula (Rp)', terms: d => [d.peningkatanModal?.modalSemulaNominal ? formatRupiah(d.peningkatanModal.modalSemulaNominal) : ''] },
+  modalSemulaSaham: { key: 'modalSemulaSaham', label: 'Saham Semula', terms: d => [d.peningkatanModal?.modalSemulaSaham ? formatSaham(d.peningkatanModal.modalSemulaSaham) : ''] },
+  nominalPerSaham: { key: 'nominalPerSaham', label: 'Nominal per Saham', terms: d => [d.peningkatanModal?.nominalPerSaham ? formatRupiah(d.peningkatanModal.nominalPerSaham) : ''] },
+  modalMenjadiNominal: { key: 'modalMenjadiNominal', label: 'Modal Menjadi (Rp)', terms: d => [d.peningkatanModal?.modalMenjadiNominal ? formatRupiah(d.peningkatanModal.modalMenjadiNominal) : ''] },
+  modalMenjadiSaham: { key: 'modalMenjadiSaham', label: 'Saham Menjadi', terms: d => [d.peningkatanModal?.modalMenjadiSaham ? formatSaham(d.peningkatanModal.modalMenjadiSaham) : ''] },
+  sahamSimpananDikeluarkanJml: { key: 'sahamSimpananDikeluarkanJml', label: 'Saham Keluar (Jml)', terms: d => [d.peningkatanModal?.sahamSimpananDikeluarkanJml ? formatSaham(d.peningkatanModal.sahamSimpananDikeluarkanJml) : ''] },
+  sahamSimpananDikeluarkanNominal: { key: 'sahamSimpananDikeluarkanNominal', label: 'Saham Keluar (Rp)', terms: d => [d.peningkatanModal?.sahamSimpananDikeluarkanNominal ? formatRupiah(d.peningkatanModal.sahamSimpananDikeluarkanNominal) : ''] },
+  pengambilNama: { key: 'pengambilNama', label: 'Pengambil Saham', terms: d => [d.peningkatanModal?.pengambilNama] },
+  pengambilKedudukan: { key: 'pengambilKedudukan', label: 'Kedudukan Pengambil', terms: d => [d.peningkatanModal?.pengambilKedudukan] },
+  pengambilAktaPendirian: { key: 'pengambilAktaPendirian', label: 'Akta Pendirian Pengambil', terms: d => [d.peningkatanModal?.pengambilAktaPendirian] },
+  pengambilAktaPerubahan: { key: 'pengambilAktaPerubahan', label: 'Akta Perubahan Pengambil', terms: d => [d.peningkatanModal?.pengambilAktaPerubahan] },
+  pelepasanNama: { key: 'pelepasanNama', label: 'Pihak Pelepas Hak', terms: d => [d.peningkatanModal?.pelepasanNama] },
+  pelepasanKedudukan: { key: 'pelepasanKedudukan', label: 'Kedudukan Pelepas', terms: d => [d.peningkatanModal?.pelepasanKedudukan] },
+  pelepasanLegalitas: { key: 'pelepasanLegalitas', label: 'Legalitas Pelepas Hak', terms: d => [d.peningkatanModal?.pelepasanLegalitas] },
+  masaJabatan: { key: 'masaJabatan', label: 'Masa Jabatan Pengurus', terms: d => [d.keputusan?.masaJabatan] },
+  tglEfektif: { key: 'tglEfektif', label: 'Tanggal Efektif', terms: d => [formatTanggalBiasa(d.keputusan?.tglEfektif)] }
+};
 
-  // Dapatkan seluruh lembar halaman A4 (masing-masing 30 baris standar UUJN)
-  const pages = generateNotaryPages(d, 53, 30);
-  const totalPages = pages.length;
+function resolveFocusedFieldMeta(el) {
+  if (!el) return null;
+  const id = el.id || '';
+  if (FIELD_HIGHLIGHT_MAP[id]) return FIELD_HIGHLIGHT_MAP[id];
+  if (id.startsWith('saksi1')) {
+    return {
+      key: 'saksi1',
+      label: 'Data Saksi 1',
+      terms: d => [d.saksi1?.nama, d.saksi1?.tempatLahir, d.saksi1?.nik, d.saksi1?.alamat]
+    };
+  }
+  if (id.startsWith('saksi2')) {
+    return {
+      key: 'saksi2',
+      label: 'Data Saksi 2',
+      terms: d => [d.saksi2?.nama, d.saksi2?.tempatLahir, d.saksi2?.nik, d.saksi2?.alamat]
+    };
+  }
+  if (el.closest('#pemegangSahamContainer')) {
+    return {
+      key: 'pemegangSaham',
+      label: 'Pemegang Saham TTD',
+      terms: d => (d.pemegangSaham || []).map(ps => ps.nama).filter(Boolean)
+    };
+  }
+  if (el.closest('#pemegangSahamModalContainer')) {
+    return {
+      key: 'pemegangSahamModal',
+      label: 'Susunan Saham Pasal 4',
+      terms: d => (d.peningkatanModal?.pemegangSahamModal || []).map(ps => ps.nama).filter(Boolean)
+    };
+  }
+  if (el.closest('#sekutuContainer')) {
+    return {
+      key: 'sekutu',
+      label: 'Daftar Pesero / Sekutu',
+      terms: d => (d.sekutu || []).map(sk => sk.nama).filter(Boolean)
+    };
+  }
+  if (el.closest('#pengurusContainer')) {
+    return {
+      key: 'pengurusBaru',
+      label: 'Susunan Pengurus Baru',
+      terms: d => (d.pengurusBaru || []).map(pg => pg.nama).filter(Boolean)
+    };
+  }
+  return null;
+}
 
-  if (totalPages === 0) {
-    container.innerHTML = '<div style="text-align: center; color: var(--ink-muted-48); padding: 40px;">Belum ada data akta untuk ditampilkan.</div>';
+function getActiveFieldSearchTerms(d) {
+  if (!state.activeFieldKey) return [];
+  const meta = FIELD_HIGHLIGHT_MAP[state.activeFieldKey] || resolveFocusedFieldMeta(document.activeElement);
+  if (!meta || typeof meta.terms !== 'function') return [];
+  const rawTerms = meta.terms(d) || [];
+  const unique = new Set();
+  rawTerms.forEach(t => {
+    const clean = (t !== undefined && t !== null) ? String(t).trim() : '';
+    if (clean.length >= 2) unique.add(clean);
+  });
+  return Array.from(unique).sort((a, b) => b.length - a.length);
+}
+
+/**
+ * Mengonversi teks baris polos menjadi HTML yang aman disertai sorotan slot kosong ('....')
+ * dan sorotan kata dari field input aktif (<mark class="preview-field-mark">) tanpa pernah
+ * merusak tag HTML.
+ */
+function buildHighlightedLineHtml(rawText, searchTerms = []) {
+  if (!rawText) return '&nbsp;';
+  const ranges = [];
+
+  // 1. Cari slot bertitik (3 titik atau lebih)
+  const dotRegex = /\.{3,}/g;
+  let m;
+  while ((m = dotRegex.exec(rawText)) !== null) {
+    ranges.push({ start: m.index, end: m.index + m[0].length, kind: 'empty' });
+  }
+
+  // 2. Cari istilah dari input yang sedang aktif (case-insensitive)
+  if (Array.isArray(searchTerms) && searchTerms.length > 0) {
+    const lowerText = rawText.toLowerCase();
+    for (const term of searchTerms) {
+      const lowerTerm = term.toLowerCase();
+      if (!lowerTerm) continue;
+      let fromIdx = 0;
+      while (true) {
+        const hitIdx = lowerText.indexOf(lowerTerm, fromIdx);
+        if (hitIdx === -1) break;
+        const hitEnd = hitIdx + lowerTerm.length;
+        const overlaps = ranges.some(r => !(hitEnd <= r.start || hitIdx >= r.end));
+        if (!overlaps) {
+          ranges.push({ start: hitIdx, end: hitEnd, kind: 'mark' });
+        }
+        fromIdx = hitEnd;
+      }
+    }
+  }
+
+  ranges.sort((a, b) => a.start - b.start);
+
+  let html = '';
+  let cursor = 0;
+  for (const r of ranges) {
+    if (r.start < cursor) continue;
+    if (r.start > cursor) {
+      html += escapeHtml(rawText.slice(cursor, r.start));
+    }
+    const seg = escapeHtml(rawText.slice(r.start, r.end));
+    if (r.kind === 'mark') {
+      html += `<mark class="preview-field-mark">${seg}</mark>`;
+    } else {
+      html += `<span class="preview-empty-slot">${seg}</span>`;
+    }
+    cursor = r.end;
+  }
+  if (cursor < rawText.length) {
+    html += escapeHtml(rawText.slice(cursor));
+  }
+  return html || '&nbsp;';
+}
+
+function applyPreviewZoom() {
+  const scrollEl = document.getElementById('previewPaneScroll');
+  const zoomStage = document.querySelector('#livePreviewContainer .preview-zoom-stage');
+  if (!scrollEl || !zoomStage) return;
+
+  let zoomVal = 1;
+  if (state.previewZoomMode === 'fit') {
+    const availW = Math.max(340, scrollEl.clientWidth - 36);
+    zoomVal = Math.min(1, Math.max(0.45, Number((availW / 810).toFixed(3))));
+  } else {
+    zoomVal = parseFloat(state.previewZoomMode) || 1;
+  }
+  zoomStage.style.zoom = String(zoomVal);
+}
+
+function updateLocationBarUi(occurrences = [], isInternal = false) {
+  const bar = document.getElementById('previewLocationBar');
+  if (!bar) return;
+
+  if (!state.activeFieldKey) {
+    const quickSecBtns = isInternal
+      ? '<span class="location-hint-muted">Pratinjau Dokumen Internal Tabel aktif. Klik kolom formulir di kiri untuk menyorot nilainya.</span>'
+      : `<span class="location-meta-label">Lompat Bagian:</span>` +
+        DEED_SECTION_ORDER.map(secNum => `
+          <button type="button" class="location-jump-pill" data-jump-section="${secNum}" title="Menuju bagian ${SECTION_NAMES[secNum]}">
+            ${escapeHtml(SECTION_SHORT_NAMES[secNum])}
+          </button>
+        `).join('');
+    bar.innerHTML = quickSecBtns;
     return;
   }
 
-  const htmlParts = [];
+  const fieldLabel = escapeHtml(state.activeFieldLabel || state.activeFieldKey);
+  if (occurrences.length === 0) {
+    bar.innerHTML = `
+      <span class="location-field-badge">📍 ${fieldLabel}</span>
+      <span class="location-hint-muted">Belum muncul pada jenis akta / templat aktif saat ini.</span>
+    `;
+    return;
+  }
 
-  // 1. Bilah Navigasi & Ringkasan Halaman A4
-  htmlParts.push(`
-    <div class="preview-page-navigator">
-      <div class="page-count-badge">
-        <span class="badge-icon">📑</span>
-        <span><strong>Total Dokumen: ${totalPages} Halaman A4</strong></span>
-        <span class="page-standard-note">(Standar UUJN: Maksimal 30 Baris per Lembar)</span>
-      </div>
-      <div class="page-jump-links">
-        <span class="jump-label">Lompat Lembar:</span>
-        ${pages.map(p => `
-          <button type="button" class="btn-jump" data-target="sheet-page-${p.pageNumber}" title="Menuju ${p.headerMark}">
-            Hal. ${p.pageNumber}
-          </button>
-        `).join('')}
-      </div>
-    </div>
-  `);
+  const pillsHtml = occurrences.map(occ => {
+    const secLabel = SECTION_SHORT_NAMES[occ.sectionNum] || `Bagian ${occ.sectionNum}`;
+    const pageSuffix = occ.pageNumber ? ` &bull; Hal. ${occ.pageNumber}` : '';
+    return `
+      <button type="button" class="location-jump-pill" data-scroll-id="${escapeHtml(occ.elId)}" title="Lompat ke ${escapeHtml(secLabel)}${occ.pageNumber ? ' Halaman ' + occ.pageNumber : ''}">
+        ${escapeHtml(secLabel)}${pageSuffix}
+      </button>
+    `;
+  }).join('');
 
-  // 2. Render Setiap Lembar Halaman A4
-  pages.forEach(page => {
+  bar.innerHTML = `
+    <span class="location-field-badge">📍 ${fieldLabel}</span>
+    <span class="location-meta-label">Terpakai di ${occurrences.length} lokasi:</span>
+    ${pillsHtml}
+  `;
+}
+
+function scrollToPreviewTarget(targetEl) {
+  if (!targetEl) return;
+  targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  targetEl.classList.remove('preview-line-flash');
+  void targetEl.offsetWidth;
+  targetEl.classList.add('preview-line-flash');
+  setTimeout(() => targetEl.classList.remove('preview-line-flash'), 1500);
+}
+
+// Render Live Preview Akta Utuh & Multi-Lokasi di Panel Kanan Split-Screen
+function renderLivePreview({ scrollToFirstMatch = false } = {}) {
+  const d = kumpulkanDataForm();
+  const container = document.getElementById('livePreviewContainer');
+  const scrollEl = document.getElementById('previewPaneScroll');
+  const pageBadge = document.getElementById('previewPageCountBadge');
+  if (!container) return;
+
+  const prevScrollTop = scrollEl ? scrollEl.scrollTop : 0;
+  const activeKey = state.activeFieldKey;
+  const searchTerms = getActiveFieldSearchTerms(d);
+
+  // Mode 2: Preview Dokumen Internal Tabel (Bookman Old Style / Georgia)
+  const isModalOrRups = state.entityType === 'PT' && (state.ptSubType === 'SIRKULER_MODAL' || state.ptSubType === 'RUPS_MODAL');
+  if (state.previewMode === 'internal' && isModalOrRups) {
+    const m = buildInternalDocModel(d);
+    const occurrences = [];
+    let firstMatchElId = null;
+    let paraCounter = 0;
+
+    const renderInternalPara = (text, opts = {}) => {
+      const pid = `internal-para-${paraCounter++}`;
+      const fKeys = Array.isArray(opts.fieldKeys) ? opts.fieldKeys : [];
+      const isMatch = Boolean(activeKey && fKeys.includes(activeKey));
+      if (isMatch) {
+        occurrences.push({ sectionNum: opts.sectionNum || 4, pageNumber: null, elId: pid });
+        if (!firstMatchElId) firstMatchElId = pid;
+      }
+      const cls = `internal-doc-para ${isMatch ? 'preview-line-active-field' : ''}`;
+      let style = '';
+      if (opts.align === 'center') style += 'text-align: center; ';
+      if (opts.bold) style += 'font-weight: 700; ';
+      if (opts.underline) style += 'text-decoration: underline; ';
+      if (opts.size) style += `font-size: ${(opts.size / 2).toFixed(1)}pt; `;
+      const inner = buildHighlightedLineHtml(text, isMatch ? searchTerms : []);
+      return `<p id="${pid}" class="${cls}" style="${style}">${inner}</p>`;
+    };
+
+    const titlesHtml = m.titleLines.map(t => renderInternalPara(t.text, { align: 'center', bold: true, size: t.size, fieldKeys: t.fieldKeys, sectionNum: 1 })).join('');
+    const introsHtml = m.introParagraphs.map(p => renderInternalPara(p.text, { bold: p.bold, fieldKeys: p.fieldKeys, sectionNum: 4 })).join('');
+
+    const bankRowsHtml = m.bankTableRows.map(r => `
+      <tr>
+        <td style="text-align: center;">${escapeHtml(r.no)}</td>
+        <td style="text-align: right;">${escapeHtml(r.nominal)}</td>
+        <td style="text-align: center;">${escapeHtml(r.tgl)}</td>
+        <td style="text-align: center;">${escapeHtml(r.bank)}</td>
+        <td style="text-align: center;">${escapeHtml(r.ref)}</td>
+      </tr>
+    `).join('');
+
+    const isShareMatch = activeKey === 'pemegangSahamModal' || activeKey === 'modalMenjadiNominal' || activeKey === 'modalMenjadiSaham';
+    const shareTableId = 'internal-share-table';
+    if (isShareMatch) {
+      occurrences.push({ sectionNum: 5, pageNumber: null, elId: shareTableId });
+      if (!firstMatchElId) firstMatchElId = shareTableId;
+    }
+
+    const shareRowsHtml = m.pmList.map((ps, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}.</td>
+        <td>${escapeHtml(ps.nama)}</td>
+        <td style="text-align: right;">${escapeHtml(formatSaham(ps.jumlahSaham))}</td>
+        <td style="text-align: right;">${escapeHtml(formatRupiah(ps.nominal))}</td>
+      </tr>
+    `).join('');
+
+    const ttdSignHtml = (m.isRups ? renderInternalPara(m.pimpinanText, { bold: true, underline: true, fieldKeys: ['penghadapNama', 'penghadapSapaan'], sectionNum: 5 }) + renderInternalPara('Pimpinan Rapat', { sectionNum: 5 }) : '') +
+      m.ttdSignatories.map(ps =>
+        renderInternalPara(`( ${ps.nama} )`, { bold: true, underline: true, fieldKeys: ['pemegangSaham', 'pemegangSahamModal'], sectionNum: 5 }) +
+        renderInternalPara(ps.selaku || 'Pemegang Saham', { fieldKeys: ['pemegangSaham', 'pemegangSahamModal'], sectionNum: 5 })
+      ).join('');
+
+    if (pageBadge) pageBadge.textContent = m.isRups ? 'Georgia • Tabel' : 'Bookman • Tabel';
+    updateLocationBarUi(occurrences, true);
+
+    container.innerHTML = `
+      <div class="preview-zoom-stage">
+        <div class="internal-doc-paper" style="font-family: '${m.fontName}', Georgia, serif;">
+          ${titlesHtml}
+          <div style="height: 12px;"></div>
+          ${introsHtml}
+          <table class="internal-doc-table">
+            <thead>
+              <tr><th>No.</th><th>Jumlah Setoran</th><th>Tanggal Setoran</th><th>Nama Bank</th><th>Nomor Bukti Setor</th></tr>
+            </thead>
+            <tbody>${bankRowsHtml}</tbody>
+          </table>
+          <p style="font-weight: 700; margin: 14px 0 6px;">Susunan Kepemilikan Saham Perseroan Setelah Peningkatan Modal:</p>
+          <table id="${shareTableId}" class="internal-doc-table ${isShareMatch ? 'preview-line-active-field' : ''}">
+            <thead>
+              <tr><th>No.</th><th>Nama Pemegang Saham</th><th>Jumlah Saham (Lembar)</th><th>Nilai Nominal (Rp)</th></tr>
+            </thead>
+            <tbody>
+              ${shareRowsHtml}
+              <tr style="font-weight: 700; background-color: #f8fafc;">
+                <td colspan="2" style="text-align: center;">TOTAL KESELURUHAN</td>
+                <td style="text-align: right;">${escapeHtml(formatSaham(m.totalSahamSemua))}</td>
+                <td style="text-align: right;">${escapeHtml(formatRupiah(m.totalNominalSemua))}</td>
+              </tr>
+            </tbody>
+          </table>
+          ${renderInternalPara('Demikian dokumen ini disahkan dan ditandatangani oleh Para Pemegang Saham sebagai bentuk persetujuan.', { sectionNum: 5 })}
+          ${renderInternalPara(`${m.ttdKota}, ${m.ttdTgl}`, { fieldKeys: ['notarisWilayah', 'aktaTanggal', 'rupsTanggal'], sectionNum: 5 })}
+          ${renderInternalPara('Para Pemegang Saham Perseroan:', { bold: true, sectionNum: 5 })}
+          <div style="height: 22px;"></div>
+          ${ttdSignHtml}
+        </div>
+      </div>
+    `;
+
+    applyPreviewZoom();
+    if (scrollToFirstMatch && firstMatchElId) {
+      scrollToPreviewTarget(document.getElementById(firstMatchElId));
+    } else if (scrollEl) {
+      scrollEl.scrollTop = prevScrollTop;
+    }
+    return;
+  }
+
+  // Mode 1: Salinan Akta Notaris Multi-Halaman A4 (Standar UUJN)
+  const spacingVal = d.layout?.spacing || 2.0;
+  const pages = generateNotaryPages(d, 53, 30, { isPreview: true });
+  const totalPages = pages.length;
+
+  if (pageBadge) pageBadge.textContent = `${totalPages} Hal. A4`;
+
+  if (totalPages === 0) {
+    container.innerHTML = '<div style="text-align: center; color: var(--ink-muted-48); padding: 40px;">Belum ada data akta untuk ditampilkan.</div>';
+    updateLocationBarUi([], false);
+    return;
+  }
+
+  const occurrences = [];
+  const seenOccurrenceKeys = new Set();
+  let firstMatchElId = null;
+  let globalLineIdx = 0;
+
+  const pageSheetsHtml = pages.map(page => {
     const pageLinesHtml = page.lines.map(line => {
+      const lineId = `preview-line-${globalLineIdx++}`;
+      const secNum = line.sectionNum || 1;
+      const fKeys = Array.isArray(line.fieldKeys) ? line.fieldKeys : [];
+      const isMatch = Boolean(activeKey && fKeys.includes(activeKey));
+
+      if (isMatch) {
+        if (!firstMatchElId) firstMatchElId = lineId;
+        const dedupKey = `${secNum}-${page.pageNumber}`;
+        if (!seenOccurrenceKeys.has(dedupKey)) {
+          seenOccurrenceKeys.add(dedupKey);
+          occurrences.push({ sectionNum: secNum, pageNumber: page.pageNumber, elId: lineId });
+        }
+      }
+
       let style = '';
       if (line.align === 'center') style += 'text-align: center; ';
       if (line.bold) style += 'font-weight: bold; ';
       if (line.underline) style += 'text-decoration: underline; ';
       if (line.isSignatureSpace) style += 'height: 48px; ';
 
-      const safeText = line.text
-        ? line.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        : '&nbsp;';
+      const isCustomSec = Boolean(state.customTemplates && state.customTemplates[`section${secNum}`]);
+      const renvoiHtml = line.isSectionStart
+        ? `
+          <div class="renvoi-section-control" data-section-anchor="${secNum}">
+            <span class="renvoi-section-badge ${isCustomSec ? 'is-custom' : ''}" title="${escapeHtml(SECTION_NAMES[secNum] || '')}">
+              §${secNum} ${escapeHtml(SECTION_SHORT_NAMES[secNum] || `Bagian ${secNum}`)}${isCustomSec ? ' • Khusus' : ''}
+            </span>
+            <div class="renvoi-section-actions">
+              <button type="button" class="renvoi-btn-edit" data-edit-section="${secNum}" title="Edit kalimat/redaksional bagian ini">✏️ Edit Redaksi</button>
+              ${isCustomSec ? `<button type="button" class="renvoi-btn-reset" data-reset-section="${secNum}" title="Kembalikan bagian ini ke standar UUJN">↺</button>` : ''}
+            </div>
+          </div>
+        `
+        : '';
 
-      return `<div style="${style}">${safeText}</div>`;
+      const highlightedInner = buildHighlightedLineHtml(line.text || '', isMatch ? searchTerms : []);
+      const lineClasses = `notary-line ${isMatch ? 'preview-line-active-field' : ''}`;
+
+      return `<div id="${lineId}" class="${lineClasses}" style="${style}">${renvoiHtml}${highlightedInner}</div>`;
     }).join('\n');
 
-    htmlParts.push(`
+    return `
       <div class="notary-page-wrapper" id="sheet-page-${page.pageNumber}">
         <div class="notary-page-sheet-label">
           <span class="sheet-indicator">📄 ${page.headerMark.toUpperCase()} &bull; LEMBAR ${page.pageNumber} DARI ${totalPages}</span>
@@ -3041,104 +3428,205 @@ function renderLivePreview() {
           ${pageLinesHtml}
         </div>
       </div>
-    `);
-  });
-
-  container.innerHTML = htmlParts.join('\n');
-
-  // Pasang navigasi lompat halaman (smooth scroll)
-  container.querySelectorAll('.btn-jump').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetId = btn.getAttribute('data-target');
-      const targetEl = document.getElementById(targetId);
-      if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
-  });
-}
-
-/**
- * Render Live Preview Bagian Terkait (Tab 1 s.d. Tab 6)
- * Menampilkan hanya klausula akta yang dipengaruhi oleh data pada tab aktif.
- * Apabila kolom belum diisi, menampilkan daerah kosong bertitik '....' yang disorot elegan.
- */
-export function renderSectionPreview(secNum) {
-  const container = document.getElementById(`sectionSnippet-${secNum}`);
-  if (!container) return;
-
-  const data = kumpulkanDataForm();
-  const lines = buildSectionDeedLines(secNum, data, 53);
-
-  const html = lines.map(line => {
-    let style = '';
-    if (line.align === 'center') style += 'text-align: center; ';
-    if (line.bold) style += 'font-weight: bold; ';
-    if (line.underline) style += 'text-decoration: underline; ';
-    if (line.isSignatureSpace) style += 'height: 40px; ';
-
-    let safeText = line.text
-      ? line.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      : '&nbsp;';
-
-    // Bungkus slot bertitik (3 titik atau lebih) dalam elemen visual preview-empty-slot
-    safeText = safeText.replace(/(\.{3,})/g, '<span class="preview-empty-slot">$1</span>');
-
-    return `<div style="${style}">${safeText}</div>`;
+    `;
   }).join('\n');
 
-  container.innerHTML = html;
+  updateLocationBarUi(occurrences, false);
+
+  container.innerHTML = `
+    <div class="preview-zoom-stage">
+      ${pageSheetsHtml}
+    </div>
+  `;
+
+  applyPreviewZoom();
+
+  if (scrollToFirstMatch && firstMatchElId && scrollEl) {
+    const firstEl = document.getElementById(firstMatchElId);
+    if (firstEl) {
+      const containerRect = scrollEl.getBoundingClientRect();
+      const elRect = firstEl.getBoundingClientRect();
+      const isVisible = elRect.top >= containerRect.top + 10 && elRect.bottom <= containerRect.bottom - 10;
+      if (!isVisible) {
+        firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  } else if (scrollEl) {
+    scrollEl.scrollTop = prevScrollTop;
+  }
+}
+
+export function renderSectionPreview() {
+  renderLivePreview();
+}
+
+export function renderAllSectionPreviews() {
+  renderLivePreview();
 }
 
 /**
- * Perbarui seluruh 6 live preview parsial sekaligus
+ * Setup kontrol toolbar panel kanan: mode Salinan vs Internal, Zoom Fit/85%/100%,
+ * tombol perbesar, dropdown Edit Redaksional, dan delegasi klik Lompat Lokasi.
  */
-export function renderAllSectionPreviews() {
-  for (let s = 1; s <= 6; s++) {
-    renderSectionPreview(s);
+function setupSplitPreviewControls() {
+  const modeSwitcher = document.getElementById('previewDocModeSwitcher');
+  if (modeSwitcher) {
+    modeSwitcher.querySelectorAll('.preview-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode;
+        if (!mode || mode === state.previewMode) return;
+        state.previewMode = mode;
+        modeSwitcher.querySelectorAll('.preview-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        renderLivePreview();
+      });
+    });
+  }
+
+  const zoomGroup = document.getElementById('previewZoomControls');
+  if (zoomGroup) {
+    zoomGroup.querySelectorAll('.preview-zoom-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const z = btn.dataset.zoom || 'fit';
+        state.previewZoomMode = z;
+        zoomGroup.querySelectorAll('.preview-zoom-btn').forEach(b => b.classList.toggle('active', b.dataset.zoom === z));
+        applyPreviewZoom();
+      });
+    });
+  }
+
+  const btnExpand = document.getElementById('btnToggleExpandPreview');
+  const viewEditor = document.getElementById('view-editor');
+  if (btnExpand && viewEditor) {
+    btnExpand.addEventListener('click', () => {
+      state.isPreviewExpanded = !state.isPreviewExpanded;
+      viewEditor.classList.toggle('preview-expanded', state.isPreviewExpanded);
+      btnExpand.textContent = state.isPreviewExpanded ? '⤡' : '⤢';
+      btnExpand.title = state.isPreviewExpanded ? 'Pulihkan tampilan Split-Screen (Form + Preview)' : 'Perbesar Preview Akta ke layar penuh';
+      requestAnimationFrame(() => applyPreviewZoom());
+    });
+  }
+
+  // Bar Lompat Lokasi & Bagian (Delegasi Klik)
+  const locationBar = document.getElementById('previewLocationBar');
+  if (locationBar) {
+    locationBar.addEventListener('click', (e) => {
+      const pill = e.target.closest('.location-jump-pill');
+      if (!pill) return;
+      const scrollId = pill.getAttribute('data-scroll-id');
+      const jumpSec = pill.getAttribute('data-jump-section');
+      if (scrollId) {
+        scrollToPreviewTarget(document.getElementById(scrollId));
+      } else if (jumpSec) {
+        const anchor = document.querySelector(`.renvoi-section-control[data-section-anchor="${jumpSec}"]`);
+        scrollToPreviewTarget(anchor ? anchor.closest('.notary-line') : null);
+      }
+    });
+  }
+
+  // Dropdown Edit Redaksional
+  const dropdownWrapper = document.getElementById('clauseDropdownWrapper');
+  const btnToggleMenu = document.getElementById('btnToggleClauseMenu');
+  const dropdownMenu = document.getElementById('clauseDropdownMenu');
+  if (btnToggleMenu && dropdownMenu) {
+    btnToggleMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dropdownMenu.style.display !== 'none';
+      dropdownMenu.style.display = isOpen ? 'none' : 'block';
+    });
+    document.addEventListener('click', (e) => {
+      if (dropdownWrapper && !dropdownWrapper.contains(e.target)) {
+        dropdownMenu.style.display = 'none';
+      }
+    });
+  }
+
+  // Responsif Auto-Fit Zoom saat ukuran panel berubah
+  const previewScroll = document.getElementById('previewPaneScroll');
+  if (previewScroll && typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => {
+      if (state.previewZoomMode === 'fit') applyPreviewZoom();
+    });
+    ro.observe(previewScroll);
   }
 }
 
 /**
- * Pasang listener global pada form agar setiap ketikan pengguna seketika
- * memperbarui tampilan live preview pada bagian terkait secara instan tanpa reload.
+ * Pasang listener global pada form agar setiap ketikan & fokus input seketika
+ * memperbarui tampilan live preview utuh + sorotan multi-lokasi tanpa reload.
  */
 function setupSectionLivePreviewListeners() {
   const form = document.getElementById('aktaForm');
   if (!form) return;
 
   let animFrameId = null;
-  const triggerUpdate = () => {
+  const triggerUpdate = (scrollToMatch = false) => {
     if (animFrameId) cancelAnimationFrame(animFrameId);
     animFrameId = requestAnimationFrame(() => {
-      renderAllSectionPreviews();
-      const previewTab = document.getElementById('tab-preview');
-      if (previewTab && previewTab.classList.contains('active')) {
-        renderLivePreview();
-      }
+      renderLivePreview({ scrollToFirstMatch: scrollToMatch });
     });
   };
 
-  form.addEventListener('input', () => {
-    triggerUpdate();
+  form.addEventListener('focusin', (e) => {
+    const meta = resolveFocusedFieldMeta(e.target);
+    if (!meta) return;
+    const isNewKey = state.activeFieldKey !== meta.key;
+    state.activeFieldKey = meta.key;
+    state.activeFieldLabel = meta.label;
+    triggerUpdate(isNewKey);
+  });
+
+  form.addEventListener('input', (e) => {
+    const meta = resolveFocusedFieldMeta(e.target);
+    if (meta) {
+      state.activeFieldKey = meta.key;
+      state.activeFieldLabel = meta.label;
+    }
+    triggerUpdate(false);
     triggerAutoSave();
   });
-  form.addEventListener('change', () => {
-    triggerUpdate();
+
+  form.addEventListener('change', (e) => {
+    const meta = resolveFocusedFieldMeta(e.target);
+    if (meta) {
+      state.activeFieldKey = meta.key;
+      state.activeFieldLabel = meta.label;
+    }
+    triggerUpdate(false);
     triggerAutoSave();
   });
 }
 
 /**
- * Perbarui tampilan indikator badge dan tombol reset klausula kustom pada header preview
+ * Perbarui indikator redaksional khusus di dropdown panel kanan & Lajur Renvoi
  */
 export function updateCustomClauseBadges() {
+  const listEl = document.getElementById('clauseDropdownList');
+  const countBadge = document.getElementById('customClauseTotalBadge');
+
+  let customCount = 0;
   for (let s = 1; s <= 6; s++) {
-    const badge = document.getElementById(`customBadge-${s}`);
-    const btnReset = document.getElementById(`btnResetClause-${s}`);
-    const isCustom = Boolean(state.customTemplates && state.customTemplates[`section${s}`]);
-    if (badge) badge.style.display = isCustom ? 'inline-flex' : 'none';
-    if (btnReset) btnReset.style.display = isCustom ? 'inline-flex' : 'none';
+    if (state.customTemplates && state.customTemplates[`section${s}`]) customCount++;
+  }
+
+  if (countBadge) {
+    countBadge.textContent = String(customCount);
+    countBadge.style.display = customCount > 0 ? 'inline-flex' : 'none';
+  }
+
+  if (listEl) {
+    listEl.innerHTML = DEED_SECTION_ORDER.map(secNum => {
+      const isCustom = Boolean(state.customTemplates && state.customTemplates[`section${secNum}`]);
+      return `
+        <div class="clause-dropdown-row">
+          <button type="button" class="clause-dropdown-edit-btn" data-edit-section="${secNum}">
+            <span class="clause-sec-chip">§${secNum}</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(SECTION_NAMES[secNum] || `Bagian ${secNum}`)}</span>
+            ${isCustom ? '<span class="clause-custom-dot">Khusus</span>' : ''}
+          </button>
+          ${isCustom ? `<button type="button" class="btn-reset-clause" data-reset-section="${secNum}" title="Kembalikan bagian ini ke standar UUJN">↺</button>` : ''}
+        </div>
+      `;
+    }).join('');
   }
 }
 
@@ -3175,6 +3663,9 @@ function setupClauseCustomizationModal() {
   };
 
   const openModal = (sectionNum) => {
+    const dropdownMenu = document.getElementById('clauseDropdownMenu');
+    if (dropdownMenu) dropdownMenu.style.display = 'none';
+
     state.currentModalSection = sectionNum;
     const secName = SECTION_NAMES[sectionNum] || `Bagian ${sectionNum}`;
     if (titleEl) {
@@ -3212,46 +3703,51 @@ function setupClauseCustomizationModal() {
     }, 50);
   };
 
-  // Pasang listener pada tombol [ Edit Redaksional ] di setiap preview bagian
-  document.querySelectorAll('.btn-edit-clause').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const sec = parseInt(btn.getAttribute('data-section'), 10);
-      if (sec >= 1 && sec <= 6) openModal(sec);
+  const confirmResetSection = async (sec) => {
+    const dropdownMenu = document.getElementById('clauseDropdownMenu');
+    if (dropdownMenu) dropdownMenu.style.display = 'none';
+    const ok = await showAppDialog({
+      type: 'warning',
+      title: 'Kembalikan Redaksional Standar',
+      message: `Kembalikan redaksional Bagian ${sec} (${SECTION_NAMES[sec]}) ke template baku standar UUJN? Perubahan redaksional khusus pada bagian ini akan dihapus.`,
+      confirmText: 'Ya, Kembalikan Standar',
+      showCancel: true,
+      cancelText: 'Batal'
     });
-  });
-
-  // Pasang listener pada tombol [ ↺ Reset ] langsung di header preview bagian
-  document.querySelectorAll('.btn-reset-clause').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const sec = parseInt(btn.getAttribute('data-section'), 10);
-      if (!sec) return;
-      const ok = await showAppDialog({
-        type: 'warning',
-        title: 'Kembalikan Redaksional Standar',
-        message: `Kembalikan redaksional Bagian ${sec} (${SECTION_NAMES[sec]}) ke template baku standar UUJN? Perubahan redaksional khusus pada bagian ini akan dihapus.`,
-        confirmText: 'Ya, Kembalikan Standar',
-        showCancel: true,
-        cancelText: 'Batal'
-      });
-      if (ok) {
-        if (state.customTemplates) {
-          delete state.customTemplates[`section${sec}`];
-        }
-        updateCustomClauseBadges();
-        renderSectionPreview(sec);
-        const previewTab = document.getElementById('tab-preview');
-        if (previewTab && previewTab.classList.contains('active')) {
-          renderLivePreview();
-        }
-        triggerAutoSave();
-        await showAppDialog({
-          type: 'info',
-          title: 'Redaksional Direset',
-          message: `Bagian ${sec} telah kembali menggunakan redaksional standar UUJN.`
-        });
+    if (ok) {
+      if (state.customTemplates) {
+        delete state.customTemplates[`section${sec}`];
       }
-    });
-  });
+      updateCustomClauseBadges();
+      renderLivePreview();
+      triggerAutoSave();
+      await showAppDialog({
+        type: 'info',
+        title: 'Redaksional Direset',
+        message: `Bagian ${sec} telah kembali menggunakan redaksional standar UUJN.`
+      });
+    }
+  };
+
+  // Delegasi klik [ Edit Redaksional ] dan [ ↺ Reset ] dari Dropdown maupun Lajur Renvoi preview kanan
+  const handleClauseActionClick = (e) => {
+    const editBtn = e.target.closest('[data-edit-section]');
+    if (editBtn) {
+      const sec = parseInt(editBtn.getAttribute('data-edit-section'), 10);
+      if (sec >= 1 && sec <= 6) openModal(sec);
+      return;
+    }
+    const resetBtn = e.target.closest('[data-reset-section]');
+    if (resetBtn) {
+      const sec = parseInt(resetBtn.getAttribute('data-reset-section'), 10);
+      if (sec >= 1 && sec <= 6) confirmResetSection(sec);
+    }
+  };
+
+  const livePreviewContainer = document.getElementById('livePreviewContainer');
+  const clauseDropdownList = document.getElementById('clauseDropdownList');
+  if (livePreviewContainer) livePreviewContainer.addEventListener('click', handleClauseActionClick);
+  if (clauseDropdownList) clauseDropdownList.addEventListener('click', handleClauseActionClick);
 
   // Tombol Terapkan ke Draf Ini
   if (btnApply) {
@@ -3270,11 +3766,7 @@ function setupClauseCustomizationModal() {
       }
 
       updateCustomClauseBadges();
-      renderSectionPreview(sec);
-      const previewTab = document.getElementById('tab-preview');
-      if (previewTab && previewTab.classList.contains('active')) {
-        renderLivePreview();
-      }
+      renderLivePreview();
       triggerAutoSave();
       closeModal();
 
@@ -3304,11 +3796,7 @@ function setupClauseCustomizationModal() {
           delete state.customTemplates[`section${sec}`];
         }
         updateCustomClauseBadges();
-        renderSectionPreview(sec);
-        const previewTab = document.getElementById('tab-preview');
-        if (previewTab && previewTab.classList.contains('active')) {
-          renderLivePreview();
-        }
+        renderLivePreview();
         triggerAutoSave();
         closeModal();
         await showAppDialog({

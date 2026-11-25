@@ -360,42 +360,38 @@
         <div class="warning-content" id="aiWarningList"></div>
       </div>
 
-      <!-- Main Workspace -->
-      <div class="workspace">
-        <!-- Sidebar Tabs -->
-        <nav class="nav-tabs">
-          <button class="tab-item active" data-tab="tab-akta">
-            <span class="tab-num">1</span>
-            <span class="tab-label">Akta & Notaris</span>
-          </button>
-          <button class="tab-item" data-tab="tab-pt">
-            <span class="tab-num">2</span>
-            <span class="tab-label" id="navTabLegalitas">Legalitas Usaha</span>
-          </button>
-          <button class="tab-item" data-tab="tab-penghadap">
-            <span class="tab-num">3</span>
-            <span class="tab-label">Penghadap</span>
-          </button>
-          <button class="tab-item" data-tab="tab-saham">
-            <span class="tab-num">4</span>
-            <span class="tab-label" id="navTabModal">Modal & Sirkuler</span>
-          </button>
-          <button class="tab-item" data-tab="tab-pengurus">
-            <span class="tab-num">5</span>
-            <span class="tab-label" id="navTabPengurus">Pengurus / Organ</span>
-          </button>
-          <button class="tab-item" data-tab="tab-saksi">
-            <span class="tab-num">6</span>
-            <span class="tab-label">Saksi Notaris</span>
-          </button>
-          <button class="tab-item" data-tab="tab-preview">
-            <span class="tab-num">7</span>
-            <span class="tab-label">Live Preview Akta</span>
-          </button>
-        </nav>
+      <!-- Horizontal Step Tab Bar (Compact Top Tabs for Split-Screen) -->
+      <nav class="nav-tabs editor-tab-strip" id="editorTabBar">
+        <button class="tab-item active" data-tab="tab-akta">
+          <span class="tab-num">1</span>
+          <span class="tab-label">Akta &amp; Notaris</span>
+        </button>
+        <button class="tab-item" data-tab="tab-pt">
+          <span class="tab-num">2</span>
+          <span class="tab-label" id="navTabLegalitas">Legalitas Usaha</span>
+        </button>
+        <button class="tab-item" data-tab="tab-penghadap">
+          <span class="tab-num">3</span>
+          <span class="tab-label">Penghadap</span>
+        </button>
+        <button class="tab-item" data-tab="tab-saham">
+          <span class="tab-num">4</span>
+          <span class="tab-label" id="navTabModal">Modal &amp; Sirkuler</span>
+        </button>
+        <button class="tab-item" data-tab="tab-pengurus">
+          <span class="tab-num">5</span>
+          <span class="tab-label" id="navTabPengurus">Pengurus / Organ</span>
+        </button>
+        <button class="tab-item" data-tab="tab-saksi">
+          <span class="tab-num">6</span>
+          <span class="tab-label">Saksi Notaris</span>
+        </button>
+      </nav>
 
-        <!-- Content Area -->
-        <main class="content-panel">
+      <!-- Main Split Workspace (Left: Form Input | Right: Sticky Live Preview Akta) -->
+      <div class="workspace split-workspace" id="editorSplitWorkspace">
+        <!-- Left Pane: Content Form Area -->
+        <main class="content-panel split-form-pane" id="splitFormPane">
           <form id="aktaForm" autocomplete="off">
 
             <!-- TAB 1: DATA AKTA & NOTARIS -->
@@ -456,34 +452,6 @@
                   </div>
                 </div>
 
-                <!-- Live Preview Terkait Bagian 1 -->
-                <div class="section-live-preview-box">
-                  <div class="section-live-preview-header">
-                    <div class="section-live-preview-header-left">
-                      <div class="preview-badge-live">
-                        <span class="pulse-dot"></span>
-                        <span class="preview-badge-text">Live Preview: Kepala Akta & Notaris (Pasal 42 UUJN)</span>
-                      </div>
-                      <span class="badge-customized-pill" id="customBadge-1" style="display: none;">● Redaksional
-                        Khusus</span>
-                    </div>
-                    <div class="section-live-preview-actions">
-                      <button type="button" class="btn-edit-clause" data-section="1"
-                        title="Kustomisasi kalimat & redaksional bagian ini">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2.2">
-                          <path d="M12 20h9"></path>
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                        </svg>
-                        Edit Redaksional
-                      </button>
-                      <button type="button" class="btn-reset-clause" data-section="1" id="btnResetClause-1"
-                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
-                        Reset</button>
-                    </div>
-                  </div>
-                  <div class="section-live-preview-paper" id="sectionSnippet-1"></div>
-                </div>
               </div>
             </section>
 
@@ -595,34 +563,6 @@
                   </div>
                 </div>
 
-                <!-- Live Preview Terkait Bagian 2 -->
-                <div class="section-live-preview-box">
-                  <div class="section-live-preview-header">
-                    <div class="section-live-preview-header-left">
-                      <div class="preview-badge-live">
-                        <span class="pulse-dot"></span>
-                        <span class="preview-badge-text">Live Preview: Identitas Badan Usaha & Riwayat Legalitas</span>
-                      </div>
-                      <span class="badge-customized-pill" id="customBadge-2" style="display: none;">● Redaksional
-                        Khusus</span>
-                    </div>
-                    <div class="section-live-preview-actions">
-                      <button type="button" class="btn-edit-clause" data-section="2"
-                        title="Kustomisasi kalimat & redaksional bagian ini">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2.2">
-                          <path d="M12 20h9"></path>
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                        </svg>
-                        Edit Redaksional
-                      </button>
-                      <button type="button" class="btn-reset-clause" data-section="2" id="btnResetClause-2"
-                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
-                        Reset</button>
-                    </div>
-                  </div>
-                  <div class="section-live-preview-paper" id="sectionSnippet-2"></div>
-                </div>
               </div>
             </section>
 
@@ -690,34 +630,6 @@
                     required></textarea>
                 </div>
 
-                <!-- Live Preview Terkait Bagian 3 -->
-                <div class="section-live-preview-box">
-                  <div class="section-live-preview-header">
-                    <div class="section-live-preview-header-left">
-                      <div class="preview-badge-live">
-                        <span class="pulse-dot"></span>
-                        <span class="preview-badge-text">Live Preview: Komparisi Penghadap & Kuasa</span>
-                      </div>
-                      <span class="badge-customized-pill" id="customBadge-3" style="display: none;">● Redaksional
-                        Khusus</span>
-                    </div>
-                    <div class="section-live-preview-actions">
-                      <button type="button" class="btn-edit-clause" data-section="3"
-                        title="Kustomisasi kalimat & redaksional bagian ini">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2.2">
-                          <path d="M12 20h9"></path>
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                        </svg>
-                        Edit Redaksional
-                      </button>
-                      <button type="button" class="btn-reset-clause" data-section="3" id="btnResetClause-3"
-                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
-                        Reset</button>
-                    </div>
-                  </div>
-                  <div class="section-live-preview-paper" id="sectionSnippet-3"></div>
-                </div>
               </div>
             </section>
 
@@ -918,35 +830,6 @@
                   </div>
                 </div>
 
-                <!-- Live Preview Terkait Bagian 4 -->
-                <div class="section-live-preview-box">
-                  <div class="section-live-preview-header">
-                    <div class="section-live-preview-header-left">
-                      <div class="preview-badge-live">
-                        <span class="pulse-dot"></span>
-                        <span class="preview-badge-text">Live Preview: Rincian Modal & Penandatangan Keputusan
-                          Sirkuler</span>
-                      </div>
-                      <span class="badge-customized-pill" id="customBadge-4" style="display: none;">● Redaksional
-                        Khusus</span>
-                    </div>
-                    <div class="section-live-preview-actions">
-                      <button type="button" class="btn-edit-clause" data-section="4"
-                        title="Kustomisasi kalimat & redaksional bagian ini">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2.2">
-                          <path d="M12 20h9"></path>
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                        </svg>
-                        Edit Redaksional
-                      </button>
-                      <button type="button" class="btn-reset-clause" data-section="4" id="btnResetClause-4"
-                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
-                        Reset</button>
-                    </div>
-                  </div>
-                  <div class="section-live-preview-paper" id="sectionSnippet-4"></div>
-                </div>
               </div>
             </section>
 
@@ -983,35 +866,6 @@
                   <!-- Generated dynamically via JS -->
                 </div>
 
-                <!-- Live Preview Terkait Bagian 5 -->
-                <div class="section-live-preview-box">
-                  <div class="section-live-preview-header">
-                    <div class="section-live-preview-header-left">
-                      <div class="preview-badge-live">
-                        <span class="pulse-dot"></span>
-                        <span class="preview-badge-text">Live Preview: Keputusan Pengurus & Format Kolom Pejabat
-                          Baru</span>
-                      </div>
-                      <span class="badge-customized-pill" id="customBadge-5" style="display: none;">● Redaksional
-                        Khusus</span>
-                    </div>
-                    <div class="section-live-preview-actions">
-                      <button type="button" class="btn-edit-clause" data-section="5"
-                        title="Kustomisasi kalimat & redaksional bagian ini">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2.2">
-                          <path d="M12 20h9"></path>
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                        </svg>
-                        Edit Redaksional
-                      </button>
-                      <button type="button" class="btn-reset-clause" data-section="5" id="btnResetClause-5"
-                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
-                        Reset</button>
-                    </div>
-                  </div>
-                  <div class="section-live-preview-paper" id="sectionSnippet-5"></div>
-                </div>
               </div>
             </section>
 
@@ -1103,54 +957,74 @@
                   </div>
                 </div>
 
-                <!-- Live Preview Terkait Bagian 6 -->
-                <div class="section-live-preview-box">
-                  <div class="section-live-preview-header">
-                    <div class="section-live-preview-header-left">
-                      <div class="preview-badge-live">
-                        <span class="pulse-dot"></span>
-                        <span class="preview-badge-text">Live Preview: Saksi-Saksi & Penutup Salinan Akta</span>
-                      </div>
-                      <span class="badge-customized-pill" id="customBadge-6" style="display: none;">● Redaksional
-                        Khusus</span>
-                    </div>
-                    <div class="section-live-preview-actions">
-                      <button type="button" class="btn-edit-clause" data-section="6"
-                        title="Kustomisasi kalimat & redaksional bagian ini">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                          stroke-width="2.2">
-                          <path d="M12 20h9"></path>
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                        </svg>
-                        Edit Redaksional
-                      </button>
-                      <button type="button" class="btn-reset-clause" data-section="6" id="btnResetClause-6"
-                        style="display: none;" title="Kembalikan redaksional bagian ini ke standar UUJN">↺
-                        Reset</button>
-                    </div>
-                  </div>
-                  <div class="section-live-preview-paper" id="sectionSnippet-6"></div>
-                </div>
-              </div>
-            </section>
-
-            <!-- TAB 7: LIVE PREVIEW -->
-            <section id="tab-preview" class="tab-page">
-              <div class="section-card">
-                <div>
-                  <h2 class="card-title">Pratinjau Salinan Akta (Format Notaris)</h2>
-                  <p class="card-desc">Cek seluruh susunan teks sebelum digenerate menjadi file Microsoft Word
-                    (.docx).</p>
-                </div>
-
-                <div id="livePreviewContainer" class="mt-4 notary-multi-page-container">
-                  <!-- Live preview multi-sheet A4 injected here -->
-                </div>
               </div>
             </section>
 
           </form>
         </main>
+
+        <!-- Right Pane: Sticky Live Preview Akta Utuh & Kontrol Redaksional -->
+        <aside class="live-preview-pane" id="livePreviewPane" aria-label="Live Preview Akta Utuh">
+          <div class="preview-pane-header">
+            <div class="preview-pane-toolbar">
+              <div class="preview-toolbar-left">
+                <div class="preview-badge-live">
+                  <span class="pulse-dot"></span>
+                  <span class="preview-badge-text">Live Preview Akta</span>
+                </div>
+                <div id="previewDocModeSwitcher" class="preview-doc-mode-switcher" style="display: none;">
+                  <button type="button" class="preview-mode-btn active" data-mode="deed"
+                    title="Tampilkan Salinan Akta Notaris (Courier New 12pt)">📄 Salinan Akta</button>
+                  <button type="button" class="preview-mode-btn" data-mode="internal"
+                    title="Tampilkan Dokumen Internal Tabel (Bookman / Georgia)">📊 Dok. Internal</button>
+                </div>
+                <span class="preview-page-count-pill" id="previewPageCountBadge">0 Hal. A4</span>
+              </div>
+
+              <div class="preview-toolbar-right">
+                <!-- Dropdown Edit Redaksional Per Bagian Akta -->
+                <div class="clause-dropdown-wrapper" id="clauseDropdownWrapper">
+                  <button type="button" id="btnToggleClauseMenu" class="btn-edit-clause"
+                    title="Kustomisasi redaksional teks akta per bagian">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                    <span>Edit Redaksional</span>
+                    <span class="badge-customized-count" id="customClauseTotalBadge" style="display: none;">0</span>
+                    <span style="font-size: 10px; opacity: 0.7;">▾</span>
+                  </button>
+                  <div class="clause-dropdown-menu" id="clauseDropdownMenu" style="display: none;">
+                    <div class="clause-dropdown-title">Pilih Bagian Akta untuk Diedit Redaksionalnya:</div>
+                    <div id="clauseDropdownList" class="clause-dropdown-list">
+                      <!-- Generated dynamically by main.js in actual deed reading order -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Zoom & Expand Controls -->
+                <div class="preview-zoom-group" id="previewZoomControls">
+                  <button type="button" class="preview-zoom-btn active" data-zoom="fit" title="Sesuaikan lebar panel">Fit</button>
+                  <button type="button" class="preview-zoom-btn" data-zoom="0.85" title="Zoom 85%">85%</button>
+                  <button type="button" class="preview-zoom-btn" data-zoom="1" title="Ukuran asli A4 (100%)">100%</button>
+                </div>
+                <button type="button" id="btnToggleExpandPreview" class="preview-expand-btn"
+                  title="Perbesar / Pulihkan tampilan Split-Screen">⤢</button>
+              </div>
+            </div>
+
+            <!-- Bar Sorotan Multi-Lokasi & Lompat Halaman -->
+            <div class="preview-location-bar" id="previewLocationBar">
+              <span class="location-hint-muted">💡 Klik atau ketik kolom formulir di kiri untuk menyorot &amp; melompat ke lokasinya di akta.</span>
+            </div>
+          </div>
+
+          <div class="preview-pane-scroll" id="previewPaneScroll">
+            <div id="livePreviewContainer" class="notary-multi-page-container">
+              <!-- Live preview multi-sheet A4 injected here -->
+            </div>
+          </div>
+        </aside>
       </div>
     </div> <!-- end #view-editor -->
 
