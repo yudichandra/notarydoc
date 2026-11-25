@@ -15,7 +15,7 @@ export const SECTION_NAMES = {
 /**
  * Daftar Tag / Placeholder yang tersedia per Bagian
  */
-export function getAvailablePlaceholders(sectionNum, tipe = 'PT') {
+export function getAvailablePlaceholders(sectionNum, tipe = 'PT', subTipe = 'SIRKULER_PENGURUS') {
   const commonBadanUsaha = [
     { tag: '{NAMA_ENTITAS}', label: 'Nama Perusahaan', desc: 'Nama PT / CV / Firma / UD' },
     { tag: '{KEDUDUKAN_ENTITAS}', label: 'Kedudukan', desc: 'Wilayah kota/kabupaten kedudukan' },
@@ -69,6 +69,25 @@ export function getAvailablePlaceholders(sectionNum, tipe = 'PT') {
   }
 
   if (sectionNum === 4) {
+    if (tipe === 'PT' && (subTipe === 'SIRKULER_MODAL' || subTipe === 'RUPS_MODAL')) {
+      return [
+        ...commonBadanUsaha,
+        { tag: '{SAPAAN_PENGHADAP}', label: 'Sapaan', desc: 'Tuan / Nyonya / Nona' },
+        { tag: '{NAMA_PENGHADAP}', label: 'Nama Penghadap', desc: 'Nama lengkap penghadap' },
+        { tag: '{HARI_TANGGAL_RUPS}', label: 'Tanggal RUPS', desc: 'Hari & tanggal pelaksanaan RUPS' },
+        { tag: '{JAM_RUPS}', label: 'Jam RUPS', desc: 'Jam pelaksanaan RUPS' },
+        { tag: '{TEMPAT_RUPS}', label: 'Tempat RUPS', desc: 'Lokasi penyelenggaraan RUPS' },
+        { tag: '{TOTAL_SAHAM_HADIR_RUPS}', label: 'Kuorum RUPS', desc: 'Jumlah saham hadir RUPS' },
+        { tag: '{MODAL_SEMULA_SAHAM}', label: 'Saham Semula', desc: 'Jumlah saham sebelum peningkatan' },
+        { tag: '{MODAL_SEMULA_NOMINAL}', label: 'Modal Semula', desc: 'Nominal modal sebelum peningkatan' },
+        { tag: '{MODAL_MENJADI_NOMINAL}', label: 'Modal Menjadi', desc: 'Nominal modal setelah peningkatan' },
+        { tag: '{JML_SAHAM_DIKELUARKAN}', label: 'Saham Simpanan Keluar', desc: 'Jumlah saham portepel dikeluarkan' },
+        { tag: '{NOMINAL_SAHAM_DIKELUARKAN}', label: 'Nominal Saham Keluar', desc: 'Nilai nominal saham dikeluarkan' },
+        { tag: '{NAMA_PENGAMBIL_BAGIAN}', label: 'Pengambil Saham', desc: 'Pihak penyetor saham simpanan' },
+        { tag: '{NAMA_PELEPAS_HAK}', label: 'Pelepas Hak', desc: 'Pihak yang melepaskan pre-emptive rights' },
+        { tag: '{PASAL_SIRKULER}', label: 'Pasal Sirkuler', desc: 'Contoh: 10 ayat (5)' }
+      ];
+    }
     return [
       ...commonBadanUsaha,
       { tag: '{SAPAAN_PENGHADAP}', label: 'Sapaan', desc: 'Tuan / Nyonya / Nona' },
@@ -83,6 +102,14 @@ export function getAvailablePlaceholders(sectionNum, tipe = 'PT') {
   }
 
   if (sectionNum === 5) {
+    if (tipe === 'PT' && (subTipe === 'SIRKULER_MODAL' || subTipe === 'RUPS_MODAL')) {
+      return [
+        ...commonBadanUsaha,
+        { tag: '{TOTAL_SAHAM_MENJADI}', label: 'Total Saham Menjadi', desc: 'Total lembar saham Pasal 4 ayat (2)' },
+        { tag: '{MODAL_MENJADI_NOMINAL}', label: 'Modal Menjadi', desc: 'Total nominal modal Pasal 4 ayat (2)' },
+        { tag: '{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}', label: 'Rincian Pemegang Saham Baru', desc: 'Daftar penyetoran saham Pasal 4 ayat (2)' }
+      ];
+    }
     return [
       ...commonBadanUsaha,
       { tag: '{LABEL_ORGAN_LAMA}', label: 'Sebutan Organ Lama', desc: 'Direksi dan Dewan Komisaris lama' },
@@ -203,7 +230,7 @@ Nomor : {NOMOR_AKTA} .-
 - Bahwa para pemegang saham Perseroan telah mengambil keputusan sebagaimana ternyata dari –
 ----- KEPUTUSAN SIRKULER PARA PEMEGANG SAHAM -----
 perseroan terbatas “{NAMA_ENTITAS}” yang dibuat secara dibawah tangan, ditandatangani oleh Para Pemegang Saham Perseroan dan telah dibubuhi materai cukup dan dilekatkan pada minuta akta ini;
-- Bahwa Keputusan Sirkuler Pemegang Saham tersebut telah ditandatangani sebagai bentuk persetujuan oleh seluruh pemegang saham dengan jumlah {TOTAL_SAHAM_A} lembar saham, jumlah mana merupakan keseluruhan saham yang telah dikeluarkan dan diambil bagian oleh para pemegang saham dalam perseroan;
+- Bahwa Keputusan Sirkuler Pemegang Saham tersebut telah ditandatangani sebagai bentuk persetujuan oleh seluruh pemegang saham dengan jumlah {MODAL_SEMULA_SAHAM} lembar saham, jumlah mana merupakan keseluruhan saham yang telah dikeluarkan dan diambil bagian oleh para pemegang saham dalam perseroan;
 - Bahwa surat-surat saham yang diwakili sampai sekarang belum dicetak, namun demikian penghadap menjamin keadaannya baik jumlah dan kepemilikan saham sesuai dengan keadaan yang sebenarnya;
 - Bahwa Keputusan Sirkuler Para Pemegang Saham tersebut adalah harus dianggap sama dengan keputusan yang diambil dalam setiap rapat umum pemegang saham Perseroan berdasarkan Pasal {PASAL_SIRKULER} Anggaran Dasar Perseroan;
 - Bahwa penghadap {SAPAAN_PENGHADAP}. {NAMA_PENGHADAP} yang bertindak dalam kedudukannya sebagaimana diatas dan dengan mempergunakan kekuatan kuasa yang diberikan oleh Para Pemegang Saham Perseroan berdasarkan Keputusan Sirkuler Pemegang Saham sekarang hendak menyatakan Keputusan Sirkuler Pemegang Saham tersebut dalam suatu akta Notaris.
@@ -490,13 +517,21 @@ export function buildPlaceholderMap(data, sectionNum, isPreview = false) {
     '{MODAL_MENJADI_NOMINAL}': Number(data.peningkatanModal?.modalMenjadiNominal || 0) > 0 ? formatRupiah(data.peningkatanModal.modalMenjadiNominal) : 'Rp. ....................',
     '{MODAL_MENJADI_SAHAM}': Number(data.peningkatanModal?.modalMenjadiSaham || 0) > 0 ? formatSaham(data.peningkatanModal.modalMenjadiSaham) : '..........',
     '{TOTAL_SAHAM_MENJADI}': Number(data.peningkatanModal?.modalMenjadiSaham || 0) > 0 ? formatSaham(data.peningkatanModal.modalMenjadiSaham) : '..........',
-    '{JML_SAHAM_DIKELUARKAN}': Number(data.peningkatanModal?.sahamDikeluarkanJml || 0) > 0 ? formatSaham(data.peningkatanModal.sahamDikeluarkanJml) : '..........',
-    '{NOMINAL_SAHAM_DIKELUARKAN}': Number(data.peningkatanModal?.sahamDikeluarkanNominal || 0) > 0 ? formatRupiah(data.peningkatanModal.sahamDikeluarkanNominal) : 'Rp. ....................',
+    '{JML_SAHAM_DIKELUARKAN}': (() => {
+      const v = Number(data.peningkatanModal?.sahamSimpananDikeluarkanJml ?? data.peningkatanModal?.sahamDikeluarkanJml ?? 0);
+      return v > 0 ? formatSaham(v) : '..........';
+    })(),
+    '{NOMINAL_SAHAM_DIKELUARKAN}': (() => {
+      const v = Number(data.peningkatanModal?.sahamSimpananDikeluarkanNominal ?? data.peningkatanModal?.sahamDikeluarkanNominal ?? 0);
+      return v > 0 ? formatRupiah(v) : 'Rp. ....................';
+    })(),
     '{NAMA_PENGAMBIL_BAGIAN}': val(data.peningkatanModal?.pengambilNama, '..............................'),
     '{NAMA_PELEPAS_HAK}': val(data.peningkatanModal?.pelepasanNama, '..............................'),
     '{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}': (Array.isArray(data.peningkatanModal?.pemegangSahamModal) && data.peningkatanModal.pemegangSahamModal.length > 0)
       ? data.peningkatanModal.pemegangSahamModal.map((ps, idx) => {
-          return `${idx + 1}. ${ps.nama || '....................'}, sebanyak ${formatSaham(ps.lembarSaham || 0)} saham atau senilai ${formatRupiah(ps.totalNominal || 0)};`;
+          const jml = Number(ps.jumlahSaham ?? ps.lembarSaham ?? 0);
+          const nom = Number(ps.nominal ?? ps.totalNominal ?? 0);
+          return `${idx + 1}. ${ps.nama || '....................'}, sebanyak ${formatSaham(jml)} saham atau senilai ${formatRupiah(nom)};`;
         }).join('\n')
       : '1. .............................., sebanyak .......... saham senilai Rp. ....................;'
   };
@@ -560,6 +595,8 @@ export function renderTemplateTextToLines(renderedText, maxChars = 53, formatTex
     // Deteksi baris yang perlu perataan tengah (Center/Bold)
     const isHeading = rawP.startsWith('AKTA PERNYATAAN') ||
       rawP.startsWith('PARA PEMEGANG SAHAM') ||
+      rawP.startsWith('RAPAT UMUM PEMEGANG SAHAM') ||
+      rawP.startsWith('PERSEROAN TERBATAS') ||
       rawP.startsWith('PERSEKUTUAN KOMANDITER') ||
       rawP.startsWith('FIRMA') ||
       rawP.startsWith('PERUSAHAAN PERORANGAN') ||

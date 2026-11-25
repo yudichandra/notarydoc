@@ -2907,7 +2907,8 @@ function kumpulkanDataForm() {
 
   return {
     badanUsaha: {
-      tipe: state.entityType
+      tipe: state.entityType,
+      subTipe: state.entityType === 'PT' ? (state.ptSubType || 'SIRKULER_PENGURUS') : null
     },
     subTipe: state.entityType === 'PT' ? (state.ptSubType || 'SIRKULER_PENGURUS') : null,
     akta: {
@@ -3224,7 +3225,7 @@ function setupClauseCustomizationModal() {
     // Tampilkan chip placeholder yang relevan
     if (tagsContainer) {
       tagsContainer.innerHTML = '';
-      const tags = getAvailablePlaceholders(sectionNum, state.entityType);
+      const tags = getAvailablePlaceholders(sectionNum, state.entityType, state.ptSubType);
       tags.forEach(t => {
         const chip = document.createElement('button');
         chip.type = 'button';
@@ -3243,7 +3244,7 @@ function setupClauseCustomizationModal() {
     if (state.customTemplates && state.customTemplates[`section${sectionNum}`]) {
       textarea.value = state.customTemplates[`section${sectionNum}`];
     } else {
-      textarea.value = getDefaultClauseTemplate(sectionNum, state.entityType);
+      textarea.value = getDefaultClauseTemplate(sectionNum, state.entityType, state.ptSubType);
     }
 
     overlay.style.display = 'flex';
@@ -3299,7 +3300,7 @@ function setupClauseCustomizationModal() {
       const sec = state.currentModalSection;
       if (!sec) return;
       const val = textarea.value.trim();
-      const defVal = getDefaultClauseTemplate(sec, state.entityType).trim();
+      const defVal = getDefaultClauseTemplate(sec, state.entityType, state.ptSubType).trim();
 
       if (!state.customTemplates) state.customTemplates = {};
 
