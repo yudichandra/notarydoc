@@ -23,7 +23,7 @@ import {
   getDefaultClauseTemplate
 } from './utils/clauseTemplates.js';
 import { DEMO_CONFIG } from './demoConfig.js';
-import { initDemoTrial } from './utils/demoTrial.js';
+import { initDemoTrial, isDemoLocked, showDemoLockOverlay } from './utils/demoTrial.js';
 import fileSaver from 'file-saver';
 const saveAs = fileSaver.saveAs || fileSaver;
 
