@@ -1592,7 +1592,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   setupEntitySelector();
-  setupPtSubTypeSwitcher();
   setupTabNavigation();
   setupLiveTerbilangListeners();
   setupDynamicRowActions();
@@ -1634,28 +1633,6 @@ function setupEntitySelector() {
   // Pemilihan bentuk badan usaha ditentukan saat memilih kartu di Beranda Draf
 }
 
-// Setup Tombol Pengalih Subtipe PT (Sirkuler Pengurus vs Sirkuler Modal vs RUPS Modal)
-function setupPtSubTypeSwitcher() {
-  const switcher = document.getElementById('ptSubTypeSwitcher');
-  if (!switcher) return;
-  switcher.querySelectorAll('.pt-subtype-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const subType = btn.dataset.subtype;
-      if (subType === state.ptSubType) return;
-      state.ptSubType = subType;
-      switchEntityType('PT', false, subType);
-      if (subType === 'SIRKULER_MODAL') {
-        loadDataToForm(DEMO_DATA_PT_SIRKULER_MODAL);
-      } else if (subType === 'RUPS_MODAL') {
-        loadDataToForm(DEMO_DATA_PT_RUPS_MODAL);
-      } else {
-        loadDataToForm(DEMO_DATA_PT);
-      }
-      renderAllSectionPreviews();
-    });
-  });
-}
-
 function setActiveQuickDemo(activeId) { }
 
 // Beralih Antara PT, CV, FIRMA, dan UD
@@ -1667,28 +1644,10 @@ function switchEntityType(type, autoLoadDemo = false, subType = null) {
     state.ptSubType = 'SIRKULER_PENGURUS';
   }
 
-  // Update switcher visibility
-  const ptSwitcher = document.getElementById('ptSubTypeSwitcher');
+  // Update tombol dokumen internal (hanya untuk PT Peningkatan Modal & RUPS)
   const btnExportInternalDoc = document.getElementById('btnExportInternalDoc');
-  if (type === 'PT') {
-    if (ptSwitcher) ptSwitcher.style.display = 'inline-flex';
-    if (btnExportInternalDoc) {
-      btnExportInternalDoc.style.display = (state.ptSubType === 'SIRKULER_MODAL' || state.ptSubType === 'RUPS_MODAL') ? 'inline-flex' : 'none';
-    }
-  } else {
-    if (ptSwitcher) ptSwitcher.style.display = 'none';
-    if (btnExportInternalDoc) btnExportInternalDoc.style.display = 'none';
-  }
-
-  // Update active button on switcher
-  if (ptSwitcher) {
-    ptSwitcher.querySelectorAll('.pt-subtype-btn').forEach(btn => {
-      if (btn.dataset.subtype === state.ptSubType) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    });
+  if (btnExportInternalDoc) {
+    btnExportInternalDoc.style.display = (type === 'PT' && (state.ptSubType === 'SIRKULER_MODAL' || state.ptSubType === 'RUPS_MODAL')) ? 'inline-flex' : 'none';
   }
 
   // Update badge jenis badan usaha aktif di header form
