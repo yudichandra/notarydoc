@@ -1056,7 +1056,31 @@ function startNewDraft(entityType, subType = null) {
   switchToTab('tab-akta');
 }
 
-async function openDraftFromPath(filePath) {
+async function loadDraftFromParsedData(parsed, { activePath = null, displayName = '', showSuccessDialog = false } = {}) {
+  if (!parsed || (!parsed.badanUsaha && !parsed.akta)) {
+    throw new Error('Struktur berkas tidak cocok dengan format draf akta notaris.');
+  }
+  resetSplitPreviewState();
+  loadDataToForm(parsed);
+  updateActiveDraftUI(activePath);
+  setDraftSavedStatus(Boolean(activePath));
+  switchView('editor');
+  switchToTab('tab-akta');
+  if (showSuccessDialog) {
+    const shownName = displayName || (activePath ? activePath.split(/[\\/]/).pop() : 'Draf Akta');
+    await showAppDialog({
+      type: 'success',
+      title: 'Draf Akta Berhasil Dimuat!',
+      message: 'Seluruh isian formulir, data penghadap, organ badan usaha, dan pratinjau klausula akta telah berhasil dipulihkan.',
+      details: {
+        'Nama Berkas': shownName
+      },
+      confirmText: 'Lanjutkan Pengerjaan'
+    });
+  }
+}
+
+async function openDraftFromPath(filePath, options = {}) {
   if (!filePath) return;
   try {
     let jsonContent = '';
@@ -1065,18 +1089,107 @@ async function openDraftFromPath(filePath) {
     }
     if (!jsonContent) throw new Error('Berkas kosong atau tidak dapat diakses.');
     const parsed = JSON.parse(jsonContent);
-    resetSplitPreviewState();
-    loadDataToForm(parsed);
-    updateActiveDraftUI(filePath);
-    setDraftSavedStatus(true);
-    switchView('editor');
-    switchToTab('tab-akta');
+    await loadDraftFromParsedData(parsed, {
+      activePath: filePath,
+      showSuccessDialog: Boolean(options.showSuccessDialog)
+    });
   } catch (err) {
     await showAppDialog({
       type: 'error',
       title: 'Gagal Memuat Berkas Draf',
       message: err.message || String(err),
       details: { 'Jalur Berkas': filePath }
+    });
+  }
+}
+
+async function pickAndOpenDraftFile({ showSuccessDialog = false, fallbackInput = null } = {}) {
+  if (window.__TAURI__?.core?.invoke) {
+    try {
+      const selected = await window.__TAURI__.core.invoke('pick_open_file', {
+        defaultDir: getDefaultDownloadsDir() || null,
+        filterName: 'Berkas Draf Akta (*.akta, *.json)',
+        extensions: ['akta', 'json']
+      });
+      if (selected) {
+        await openDraftFromPath(selected, { showSuccessDialog });
+      }
+    } catch (err) {
+      await showAppDialog({
+        type: 'error',
+        title: 'Gagal Membuka Dialog Berkas',
+        message: err.message || String(err)
+      });
+    }
+    return;
+  }
+  fallbackInput?.click();
+}
+
+function bindWebDraftFileInput(inputEl, { showSuccessDialog = false } = {}) {
+  if (!inputEl) return;
+  inputEl.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        await loadDraftFromParsedData(parsed, {
+          activePath: null,
+          displayName: file.name,
+          showSuccessDialog
+        });
+      } catch (err) {
+        await showAppDialog({
+          type: 'error',
+          title: 'Gagal Memuat Berkas Draf',
+          message: err.message || String(err),
+          details: 'Pastikan berkas berformat .akta atau .json yang valid.'
+        });
+      } finally {
+        inputEl.value = '';
+      }
+    };
+    reader.onerror = async () => {
+      await showAppDialog({
+        type: 'error',
+        title: 'Kesalahan Membaca Berkas',
+        message: 'Terjadi kendala saat membaca berkas dari media penyimpanan komputer Anda.'
+      });
+      inputEl.value = '';
+    };
+    reader.readAsText(file);
+  });
+}
+
+async function openFolderPathInExplorer(folderPath) {
+  if (!folderPath) {
+    await showAppDialog({
+      type: 'info',
+      title: 'Folder Belum Ditentukan',
+      message: 'Direktori folder belum ditentukan. Folder akan otomatis diminta saat pertama kali Anda menyimpan draf, atau klik tombol "Pilih Folder" untuk mengaturnya.'
+    });
+    return;
+  }
+  if (window.__TAURI__?.core?.invoke) {
+    try {
+      await window.__TAURI__.core.invoke('open_folder', { folderPath });
+    } catch (err) {
+      await showAppDialog({
+        type: 'error',
+        title: 'Gagal Membuka Folder',
+        message: err.message || String(err),
+        details: { 'Lokasi Folder': folderPath }
+      });
+    }
+  } else {
+    await showAppDialog({
+      type: 'info',
+      title: 'Lokasi Folder Target',
+      details: { 'Lokasi Folder': folderPath },
+      confirmText: 'OK'
     });
   }
 }
@@ -1499,12 +1612,12 @@ function setupDashboard() {
                 const pInput = document.getElementById('settingDirArchive');
                 if (pInput) pInput.value = p;
                 refreshDashboardDrafts();
-                await window.__TAURI__.core.invoke('plugin:opener|open_path', { path: p });
+                await openFolderPathInExplorer(p);
               }
             } catch (err) {
               await showAppDialog({
                 type: 'error',
-                title: 'Gagal Membuka File Explorer',
+                title: 'Gagal Memilih Folder',
                 message: err.message || String(err)
               });
             }
@@ -1512,25 +1625,7 @@ function setupDashboard() {
         }
         return;
       }
-      if (window.__TAURI__?.core?.invoke) {
-        try {
-          await window.__TAURI__.core.invoke('plugin:opener|open_path', { path: p });
-        } catch (err) {
-          await showAppDialog({
-            type: 'info',
-            title: 'Folder Direktori Target',
-            message: `Jalur folder:\n${p}\n\n${err.message || ''}`,
-            confirmText: 'OK'
-          });
-        }
-      } else {
-        await showAppDialog({
-          type: 'info',
-          title: 'Folder Direktori Target',
-          details: { 'Lokasi Folder': p },
-          confirmText: 'OK'
-        });
-      }
+      await openFolderPathInExplorer(p);
     });
   }
 
@@ -1577,40 +1672,11 @@ function setupDashboard() {
   // Tombol Buka File Lain dari Dashboard
   const btnDashOpenFile = document.getElementById('btnDashboardOpenOtherFile');
   const dashFilePicker = document.getElementById('filePickerDashboard');
-  if (btnDashOpenFile && dashFilePicker) {
+  if (btnDashOpenFile) {
     btnDashOpenFile.addEventListener('click', () => {
-      dashFilePicker.click();
+      pickAndOpenDraftFile({ showSuccessDialog: false, fallbackInput: dashFilePicker });
     });
-
-    dashFilePicker.addEventListener('change', (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const parsed = JSON.parse(event.target.result);
-          if (!parsed.badanUsaha && !parsed.akta) {
-            throw new Error('Struktur berkas tidak cocok dengan format draf akta.');
-          }
-          loadDataToForm(parsed);
-          updateActiveDraftUI(file.name);
-          setDraftSavedStatus(true);
-          switchView('editor');
-          switchToTab('tab-akta');
-        } catch (err) {
-          await showAppDialog({
-            type: 'error',
-            title: 'Gagal Memuat Berkas Draf',
-            message: err.message || String(err),
-            details: 'Pastikan berkas berformat .akta atau .json yang valid.'
-          });
-        } finally {
-          dashFilePicker.value = '';
-        }
-      };
-      reader.readAsText(file);
-    });
+    bindWebDraftFileInput(dashFilePicker, { showSuccessDialog: false });
   }
 }
 
@@ -2322,8 +2388,12 @@ function setupActionButtons() {
     });
     if (ok) {
       resetFormFields(true);
+      resetSplitPreviewState();
+      const clauseMenu = document.getElementById('clauseDropdownMenu');
+      if (clauseMenu) clauseMenu.classList.remove('open');
       updateActiveDraftUI(null);
       setDraftSavedStatus(false);
+      renderLivePreview();
     }
   });
 
@@ -2445,13 +2515,15 @@ function setupActionButtons() {
 
   const btnGen = document.getElementById('btnGenerateDocx');
   if (btnGen) btnGen.addEventListener('click', handleGenerate);
-  const btnExport = document.getElementById('btnExportPreview');
-  if (btnExport) btnExport.addEventListener('click', handleGenerate);
 
   // Tombol Export Dokumen Internal (Keputusan Sirkuler / BA RUPS dengan Tabel)
   const btnExportInternal = document.getElementById('btnExportInternalDoc');
   if (btnExportInternal) {
     btnExportInternal.addEventListener('click', async () => {
+      if (isDemoLocked()) {
+        showDemoLockOverlay();
+        return;
+      }
       const data = kumpulkanDataForm();
       const originalText = btnExportInternal.innerHTML;
       try {
@@ -4037,55 +4109,11 @@ function setupProgressSaveAndLoad() {
   // 3. Buka Draf (.akta / .json)
   const btnLoad = document.getElementById('btnLoadProgress');
   const filePicker = document.getElementById('filePickerProgress');
-  if (btnLoad && filePicker) {
+  if (btnLoad) {
     btnLoad.addEventListener('click', () => {
-      filePicker.click();
+      pickAndOpenDraftFile({ showSuccessDialog: true, fallbackInput: filePicker });
     });
-
-    filePicker.addEventListener('change', (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const parsed = JSON.parse(event.target.result);
-          if (!parsed.badanUsaha && !parsed.akta) {
-            throw new Error('Struktur berkas tidak cocok dengan format draf akta notaris.');
-          }
-          loadDataToForm(parsed);
-          updateActiveDraftUI(file.name);
-          setDraftSavedStatus(true);
-          await showAppDialog({
-            type: 'success',
-            title: 'Draf Akta Berhasil Dimuat!',
-            message: 'Seluruh isian formulir, data penghadap, organ badan usaha, dan pratinjau klausula akta telah berhasil dipulihkan.',
-            details: {
-              'Nama Berkas': file.name
-            },
-            confirmText: 'Lanjutkan Pengerjaan'
-          });
-        } catch (err) {
-          await showAppDialog({
-            type: 'error',
-            title: 'Gagal Memuat Berkas Draf',
-            message: err.message || String(err),
-            details: 'Pastikan berkas berformat .akta atau .json yang valid.'
-          });
-        } finally {
-          filePicker.value = '';
-        }
-      };
-      reader.onerror = async () => {
-        await showAppDialog({
-          type: 'error',
-          title: 'Kesalahan Membaca Berkas',
-          message: 'Terjadi kendala saat membaca berkas dari media penyimpanan komputer Anda.'
-        });
-        filePicker.value = '';
-      };
-      reader.readAsText(file);
-    });
+    bindWebDraftFileInput(filePicker, { showSuccessDialog: true });
   }
 }
 
@@ -4205,43 +4233,13 @@ function setupDirectorySettings() {
     });
   }
 
-  // Buka folder di Windows Explorer
-  const openFolderInExplorer = async (folderPath) => {
-    if (!folderPath) {
-      await showAppDialog({
-        type: 'info',
-        title: 'Folder Belum Ditentukan',
-        message: 'Direktori folder belum ditentukan. Folder akan otomatis diminta saat pertama kali Anda menyimpan draf, atau klik tombol "Pilih Folder" untuk mengaturnya.'
-      });
-      return;
-    }
-    try {
-      if (window.__TAURI__?.core?.invoke) {
-        await window.__TAURI__.core.invoke('plugin:opener|open_path', { path: folderPath });
-      } else {
-        await showAppDialog({
-          type: 'info',
-          title: 'Lokasi Folder Target',
-          details: { 'Lokasi Folder': folderPath }
-        });
-      }
-    } catch (err) {
-      await showAppDialog({
-        type: 'error',
-        title: 'Gagal Membuka Folder',
-        message: err.message || String(err),
-        details: { 'Lokasi Folder': folderPath }
-      });
-    }
-  };
-
   const btnOpenArchive = document.getElementById('btnOpenDirArchive');
   if (btnOpenArchive) {
     btnOpenArchive.addEventListener('click', () => {
       const p = dirArchiveInput?.value.trim() ||
         localStorage.getItem('setting_dir_archive') ||
         localStorage.getItem('setting_dir_progress') || '';
-      openFolderInExplorer(p);
+      openFolderPathInExplorer(p);
     });
   }
 }

@@ -146,6 +146,67 @@ fn read_text_file(file_path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn pick_open_file(
+    default_dir: Option<String>,
+    filter_name: String,
+    extensions: Vec<String>,
+) -> Result<Option<String>, String> {
+    let mut dialog = rfd::AsyncFileDialog::new().set_title("Buka Berkas");
+    if let Some(dir) = default_dir {
+        if !dir.is_empty() {
+            let p = std::path::PathBuf::from(&dir);
+            if p.exists() {
+                dialog = dialog.set_directory(p);
+            }
+        }
+    }
+    let exts_ref: Vec<&str> = extensions.iter().map(|s| s.as_str()).collect();
+    if !exts_ref.is_empty() {
+        dialog = dialog.add_filter(&filter_name, &exts_ref);
+    }
+    let picked = dialog.pick_file().await;
+    Ok(picked.map(|handle| handle.path().to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+fn open_folder(folder_path: String) -> Result<(), String> {
+    let path = std::path::PathBuf::from(&folder_path);
+    if !path.exists() {
+        return Err(format!("Folder tidak ditemukan: {}", folder_path));
+    }
+    let target_dir = if path.is_dir() {
+        path
+    } else {
+        path.parent()
+            .map(|p| p.to_path_buf())
+            .ok_or_else(|| "Folder induk tidak valid.".to_string())?
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&target_dir)
+            .spawn()
+            .map_err(|e| format!("Gagal membuka Explorer: {e}"))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&target_dir)
+            .spawn()
+            .map_err(|e| format!("Gagal membuka Finder: {e}"))?;
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&target_dir)
+            .spawn()
+            .map_err(|e| format!("Gagal membuka file manager: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn delete_file(file_path: String) -> Result<(), String> {
     let path = std::path::PathBuf::from(&file_path);
     if path.exists() {
@@ -245,7 +306,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             pick_folder,
+            pick_open_file,
             pick_save_file,
+            open_folder,
             write_text_file,
             write_binary_file,
             get_downloads_dir,
