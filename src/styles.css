@@ -957,6 +957,7 @@ body {
   min-width: 0;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 8px;
   padding-bottom: 60px;
   scroll-behavior: smooth;
@@ -1133,6 +1134,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 label {
@@ -1148,6 +1150,8 @@ label {
 
 .form-input {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background-color: var(--canvas);
   border: 1px solid #d2d2d7;
   border-radius: var(--rounded-sm);
@@ -1157,6 +1161,24 @@ label {
   font-family: inherit;
   transition: all 0.15s ease-out;
   outline: none;
+}
+
+textarea,
+textarea.form-input {
+  resize: none;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  line-height: 1.5;
+}
+
+textarea.form-input {
+  min-height: 76px;
+}
+
+textarea.form-input[rows="3"] {
+  min-height: 98px;
 }
 
 .form-input:focus {
@@ -1656,6 +1678,7 @@ label {
 
 .clause-editor-textarea {
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   font-family: 'Courier New', Courier, monospace;
   font-size: 12px;
@@ -1665,8 +1688,11 @@ label {
   border-radius: 10px;
   background: #ffffff;
   color: #0f172a;
-  resize: vertical;
+  resize: none;
+  height: 280px;
   min-height: 220px;
+  max-height: 48vh;
+  overflow-y: auto;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
