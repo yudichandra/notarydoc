@@ -1175,6 +1175,9 @@ textarea.form-input {
 
 textarea.form-input {
   min-height: 76px;
+  max-height: 360px;
+  overflow-y: hidden;
+  transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
 }
 
 textarea.form-input[rows="3"] {

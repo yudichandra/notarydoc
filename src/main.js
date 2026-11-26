@@ -950,6 +950,31 @@ window.alert = function (msg) {
   });
 };
 
+function autoResizeTextarea(el) {
+  if (!el) return;
+  if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return;
+  const scrollParent = document.getElementById('splitFormPane');
+  const prevScroll = scrollParent ? scrollParent.scrollTop : 0;
+  const cs = getComputedStyle(el);
+  const borderV = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+  const minH = parseFloat(cs.minHeight) || 76;
+  const maxH = parseFloat(cs.maxHeight) || 360;
+  el.style.height = 'auto';
+  const neededH = el.scrollHeight + borderV;
+  const targetH = Math.min(Math.max(neededH, minH), maxH);
+  el.style.height = `${targetH}px`;
+  el.style.overflowY = neededH > maxH ? 'auto' : 'hidden';
+  if (scrollParent && scrollParent.scrollTop !== prevScroll) {
+    scrollParent.scrollTop = prevScroll;
+  }
+}
+
+function autoResizeAllTextareas() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('textarea.form-input').forEach(autoResizeTextarea);
+  });
+}
+
 function resetFormFields(keepNotaris = true) {
   const form = document.getElementById('aktaForm');
   if (form) form.reset();
@@ -982,6 +1007,7 @@ function resetFormFields(keepNotaris = true) {
   updateCustomClauseBadges();
   checkOverallConsistency();
   renderAllSectionPreviews();
+  autoResizeAllTextareas();
 }
 
 function switchView(viewName) {
@@ -1007,6 +1033,7 @@ function switchView(viewName) {
     requestAnimationFrame(() => {
       renderLivePreview();
       applyPreviewZoom();
+      autoResizeAllTextareas();
     });
   } else if (viewName === 'settings') {
     document.body.style.overflow = '';
@@ -1946,6 +1973,7 @@ function switchEntityType(type, autoLoadDemo = false, subType = null) {
   checkOverallConsistency();
   applyNotaryNameLock();
   renderLivePreview();
+  autoResizeAllTextareas();
 }
 
 // Pindah ke Tab Tertentu Secara Terprogram
@@ -1964,6 +1992,7 @@ function switchToTab(targetId) {
   if (contentPanel) {
     contentPanel.scrollTop = 0;
   }
+  autoResizeAllTextareas();
 }
 
 // Setup Navigasi Tab
@@ -2374,6 +2403,7 @@ function tambahBarisPengurus(data = null) {
 
   wireDynamicRowEvents(div);
   container.appendChild(div);
+  autoResizeTextarea(div.querySelector('.pg-alamat'));
 }
 
 /**
@@ -2941,6 +2971,7 @@ function loadDataToForm(data) {
   checkOverallConsistency();
   applyNotaryNameLock();
   renderAllSectionPreviews();
+  autoResizeAllTextareas();
 }
 
 // Kumpulkan Data Form Menjadi JSON Object
@@ -3656,9 +3687,14 @@ function setupSplitPreviewControls() {
       viewEditor.classList.toggle('preview-expanded', state.isPreviewExpanded);
       btnExpand.textContent = state.isPreviewExpanded ? '⤡' : '⤢';
       btnExpand.title = state.isPreviewExpanded ? 'Pulihkan tampilan Split-Screen (Form + Preview)' : 'Perbesar Preview Akta ke layar penuh';
-      requestAnimationFrame(() => applyPreviewZoom());
+      requestAnimationFrame(() => {
+        applyPreviewZoom();
+        autoResizeAllTextareas();
+      });
     });
   }
+
+  window.addEventListener('resize', autoResizeAllTextareas);
 
   // Bar Lompat Lokasi & Bagian (Delegasi Klik)
   const locationBar = document.getElementById('previewLocationBar');
@@ -3730,6 +3766,9 @@ function setupSectionLivePreviewListeners() {
   });
 
   form.addEventListener('input', (e) => {
+    if (e.target && e.target.matches('textarea.form-input')) {
+      autoResizeTextarea(e.target);
+    }
     const meta = resolveFocusedFieldMeta(e.target);
     if (meta) {
       state.activeFieldKey = meta.key;
