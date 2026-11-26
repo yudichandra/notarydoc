@@ -113,7 +113,7 @@ export function getAvailablePlaceholders(sectionNum, tipe = 'PT', subTipe = 'SIR
 
   if (sectionNum === 2) {
     return [
-      { tag: '{JABATAN_PENGHADAP}', label: 'Jabatan Penghadap', desc: 'Direktur / Persero Pengurus / Pemilik' },
+      { tag: '{JABATAN_PENGHADAP}', label: 'Kapasitas Penghadap', desc: 'Direktur / Persero Pengurus / Pemilik / Kuasa' },
       ...commonBadanUsaha,
       { tag: '{NO_AKTA_PENDIRIAN}', label: 'No Akta Pendirian', desc: 'Nomor akta pendirian lama' },
       { tag: '{TGL_AKTA_PENDIRIAN}', label: 'Tgl Akta Pendirian', desc: 'Tanggal akta pendirian' },
