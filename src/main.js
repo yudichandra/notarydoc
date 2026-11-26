@@ -17,6 +17,9 @@ import {
   buildInternalDocModel
 } from './utils/docGenerator.js';
 import {
+  sanitizeFilenameSegment
+} from './utils/notaryLineFormatter.js';
+import {
   SECTION_NAMES,
   DEED_SECTION_ORDER,
   getAvailablePlaceholders,
@@ -2413,8 +2416,8 @@ function setupActionButtons() {
     else if (tipe === 'CV') rawNama = data.cv?.nama || 'AKTA';
     else if (tipe === 'FIRMA' || tipe === 'FA') rawNama = data.firma?.nama || 'AKTA';
     else if (tipe === 'UD') rawNama = data.ud?.nama || 'AKTA';
-    const cleanNama = rawNama.replace(/[^a-zA-Z0-9]/g, '_');
-    const nomorAkta = data.akta?.nomor || '1';
+    const cleanNama = sanitizeFilenameSegment(rawNama, 'AKTA', 60);
+    const nomorAkta = sanitizeFilenameSegment(data.akta?.nomor, '1', 20);
     let subTipeTag = '';
     if (subTipe === 'RUPS_MODAL') subTipeTag = '_RUPS_Modal';
     else if (subTipe === 'SIRKULER_MODAL') subTipeTag = '_Sirkuler_Modal';
@@ -3391,6 +3394,13 @@ function renderLivePreview({ scrollToFirstMatch = false } = {}) {
           <div style="height: 12px;"></div>
           ${introsHtml}
           <table class="internal-doc-table">
+            <colgroup>
+              <col style="width: 8%;">
+              <col style="width: 26%;">
+              <col style="width: 22%;">
+              <col style="width: 20%;">
+              <col style="width: 24%;">
+            </colgroup>
             <thead>
               <tr><th>No.</th><th>Jumlah Setoran</th><th>Tanggal Setoran</th><th>Nama Bank</th><th>Nomor Bukti Setor</th></tr>
             </thead>
@@ -3398,6 +3408,12 @@ function renderLivePreview({ scrollToFirstMatch = false } = {}) {
           </table>
           <p style="font-weight: 700; margin: 14px 0 6px;">Susunan Kepemilikan Saham Perseroan Setelah Peningkatan Modal:</p>
           <table id="${shareTableId}" class="internal-doc-table ${isShareMatch ? 'preview-line-active-field' : ''}">
+            <colgroup>
+              <col style="width: 8%;">
+              <col style="width: 38%;">
+              <col style="width: 25%;">
+              <col style="width: 29%;">
+            </colgroup>
             <thead>
               <tr><th>No.</th><th>Nama Pemegang Saham</th><th>Jumlah Saham (Lembar)</th><th>Nilai Nominal (Rp)</th></tr>
             </thead>
@@ -3955,8 +3971,8 @@ function setupProgressSaveAndLoad() {
     else if (tipe === 'CV') rawNama = data.cv?.nama || 'DRAF';
     else if (tipe === 'FIRMA' || tipe === 'FA') rawNama = data.firma?.nama || 'DRAF';
 
-    const cleanNama = rawNama.replace(/[^a-zA-Z0-9]/g, '_');
-    const nomorAkta = data.akta?.nomor || 'Draf';
+    const cleanNama = sanitizeFilenameSegment(rawNama, 'DRAF', 60);
+    const nomorAkta = sanitizeFilenameSegment(data.akta?.nomor, 'Draf', 20);
     const defaultFilename = `Draf_Akta_No_${nomorAkta}_${tipe}_${cleanNama}.akta`;
 
     let chosenPath = state.currentDraftFilePath;

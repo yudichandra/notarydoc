@@ -10,6 +10,7 @@ import {
   Table,
   TableRow,
   TableCell,
+  TableLayoutType,
   WidthType,
   BorderStyle
 } from 'docx';
@@ -24,117 +25,17 @@ import {
   formatRupiah
 } from './terbilang.js';
 import { substitutePlaceholders, renderTemplateTextToLines, renderCustomTemplateSectionToLines } from './clauseTemplates.js';
+import {
+  formatTextToNotaryLines,
+  formatCenterNotaryLines,
+  formatDashedCenterHeading,
+  formatOfficerColumnLines,
+  sanitizeInlineField,
+  sanitizeFilenameSegment,
+  formatAlphaIndex
+} from './notaryLineFormatter.js';
 
-/**
- * Algoritma Penata Baris Akta Notaris (Line-by-line Wrap & Dash Filling)
- * Sesuai Pasal 42 ayat (2) UUJN:
- * "Ruang dan sela kosong dalam akta digaris dengan jelas sebelum akta ditandatangani."
- *
- * Pada font Courier New 12 pt dengan margin Left: 2.56" dan Right: 0.39" di kertas A4,
- * lebar bidang ketik pas memuat TEPAT 53 karakter per baris.
- * Setiap baris yang tidak penuh otomatis ditutup dengan garis hubung/strip ('---')
- * sehingga tepi kanan rata lurus sempurna dan jarak antar baris 100% konstan.
- */
-export function formatTextToNotaryLines(rawText, maxChars = 53, options = {}) {
-  if (!rawText || typeof rawText !== 'string') return [];
-
-  // Tangkap spasi awal jika ada (misal alinea masuk "  Bahwa ...")
-  const leadingMatch = rawText.match(/^\s+/);
-  const leadingSpaces = leadingMatch ? leadingMatch[0] : '';
-
-  // Bersihkan teks dari trailing dashes atau baris baru berlebih
-  const stripped = rawText.replace(/[-–—\s]+$/, '').replace(/\r\n/g, '\n').replace(/\s+/g, ' ').trim();
-  if (!stripped) return [];
-
-  // Tentukan indentasi baris lanjutan (tab / hanging indent) sesuai standar salinanakta.pdf
-  let continuationIndent = '';
-  if (options && typeof options.continuationIndent === 'string') {
-    continuationIndent = options.continuationIndent;
-  } else if (maxChars > 35) {
-    if (stripped.startsWith('- ') || stripped.startsWith('-\t') || stripped.startsWith('– ') || stripped.startsWith('— ')) {
-      continuationIndent = leadingSpaces + '  ';
-    } else if (/^\d+\)\s+/.test(stripped)) {
-      const m = stripped.match(/^\d+\)\s+/);
-      continuationIndent = leadingSpaces + ' '.repeat(m[0].length);
-    } else if (/^\d+\.\s+/.test(stripped)) {
-      const m = stripped.match(/^\d+\.\s+/);
-      continuationIndent = leadingSpaces + (leadingSpaces ? '   ' : ' '.repeat(m[0].length));
-    } else if (leadingSpaces) {
-      continuationIndent = leadingSpaces;
-    }
-  }
-
-  const rawWords = stripped.split(' ');
-  const words = [];
-  
-  // Amankan kata yang sangat panjang (melebihi maxChars) agar tidak merusak lebar baris
-  for (const w of rawWords) {
-    if (w.length > maxChars) {
-      let rem = w;
-      while (rem.length > maxChars) {
-        words.push(rem.slice(0, maxChars - 1) + '-');
-        rem = rem.slice(maxChars - 1);
-      }
-      if (rem) words.push(rem);
-    } else {
-      words.push(w);
-    }
-  }
-
-  const lines = [];
-  let currentWords = [];
-  let currentLen = 0;
-  let isFirstLine = true;
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-    const prefix = (isFirstLine ? leadingSpaces : continuationIndent);
-    const wordToPush = (currentWords.length === 0 && prefix)
-      ? prefix + word
-      : word;
-
-    const testLen = currentWords.length === 0
-      ? wordToPush.length
-      : currentLen + 1 + word.length;
-
-    if (testLen <= maxChars) {
-      currentWords.push(wordToPush);
-      currentLen = testLen;
-    } else {
-      let lineStr = currentWords.join(' ');
-      const diff = maxChars - lineStr.length;
-      if (diff > 0) {
-        if (diff === 1) {
-          lineStr += '-';
-        } else {
-          lineStr += ' ' + '-'.repeat(diff - 1);
-        }
-      }
-      lines.push(lineStr);
-
-      isFirstLine = false;
-      const nextWord = continuationIndent ? continuationIndent + word : word;
-      currentWords = [nextWord];
-      currentLen = nextWord.length;
-    }
-  }
-
-  // Baris terakhir dalam alinea/paragraf, tutup sisa ruang kosong dengan dashes
-  if (currentWords.length > 0) {
-    let lineStr = currentWords.join(' ');
-    const diff = maxChars - lineStr.length;
-    if (diff > 0) {
-      if (diff === 1) {
-        lineStr += '-';
-      } else {
-        lineStr += ' ' + '-'.repeat(diff - 1);
-      }
-    }
-    lines.push(lineStr);
-  }
-
-  return lines;
-}
+export { formatTextToNotaryLines };
 
 // Helper membuat Paragraph Word ber-spasi konstan (Standar 2.0 Double Spacing, Spacing Before 0, After 0)
 function createSingleLinePara(text, { bold = false, align = AlignmentType.LEFT, underline = null, spacing = {} } = {}, defaultLine = 480) {
@@ -248,7 +149,7 @@ function resolveModalFields(data, isRups) {
 }
 
 function joinParts(parts) {
-  return parts.map(p => (p || '').trim()).filter(Boolean).join(', ');
+  return parts.map(p => sanitizeInlineField(p)).filter(Boolean).join(', ');
 }
 
 /**
@@ -258,32 +159,30 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
   const isPreview = Boolean(options?.isPreview);
   const lines = [];
   const val = (str, fallback = '....................') => {
-    return (str && typeof str === 'string' && str.trim()) ? str.trim() : fallback;
+    const cleaned = sanitizeInlineField(str);
+    return cleaned || fallback;
   };
 
   const tipe = (data?.badanUsaha && data.badanUsaha.tipe) || 'PT';
-  const entitasNama = (data?.pt?.nama && data.pt.nama.trim())
-    ? data.pt.nama.trim().toUpperCase()
+  const rawEntitasNama = sanitizeInlineField(data?.pt?.nama);
+  const entitasNama = rawEntitasNama
+    ? rawEntitasNama.toUpperCase()
     : (isPreview ? '..............................' : `USAHA ${tipe}`);
-  const entitasKedudukan = (data?.pt?.kedudukan && data.pt.kedudukan.trim())
-    ? data.pt.kedudukan.trim().toUpperCase()
+  const rawEntitasKedudukan = sanitizeInlineField(data?.pt?.kedudukan);
+  const entitasKedudukan = rawEntitasKedudukan
+    ? rawEntitasKedudukan.toUpperCase()
     : (isPreview ? '....................' : 'KABUPATEN');
   // Parsing data notaris: nama lengkap (tanpa gelar), gelar komparisi (panjang/dieja), dan gelar tanda tangan (singkat)
-  const rawNotarisNama = (data?.notaris?.nama && data.notaris.nama.trim())
-    ? data.notaris.nama.trim()
-    : (isPreview ? '' : 'GRENDI JAYA DARMAWAN');
+  const rawNotarisNamaClean = sanitizeInlineField(data?.notaris?.nama);
+  const rawNotarisNama = rawNotarisNamaClean || (isPreview ? '' : 'GRENDI JAYA DARMAWAN');
   const notarisNamaClean = rawNotarisNama
     ? (rawNotarisNama.includes(',') ? rawNotarisNama.split(',')[0].trim() : rawNotarisNama).toUpperCase()
     : '........................................';
-  const notarisGelarPanjang = (data?.notaris?.gelarPanjang && data.notaris.gelarPanjang.trim())
-    ? data.notaris.gelarPanjang.trim()
-    : 'Sarjana Hukum, Magister Kenotariatan';
-  const notarisGelarSingkat = (data?.notaris?.gelarSingkat && data.notaris.gelarSingkat.trim())
-    ? data.notaris.gelarSingkat.trim()
-    : (rawNotarisNama.includes(',') ? rawNotarisNama.substring(rawNotarisNama.indexOf(',') + 1).trim() : 'S.H., M.Kn.');
-  const notarisWilayah = (data?.notaris?.wilayah && data.notaris.wilayah.trim())
-    ? data.notaris.wilayah.trim()
-    : (isPreview ? '....................' : 'Kabupaten Kudus');
+  const notarisGelarPanjang = sanitizeInlineField(data?.notaris?.gelarPanjang) || 'Sarjana Hukum, Magister Kenotariatan';
+  const notarisGelarSingkat = sanitizeInlineField(data?.notaris?.gelarSingkat) ||
+    (rawNotarisNama.includes(',') ? rawNotarisNama.substring(rawNotarisNama.indexOf(',') + 1).trim() : 'S.H., M.Kn.');
+  const notarisWilayah = sanitizeInlineField(data?.notaris?.wilayah) ||
+    (isPreview ? '....................' : 'Kabupaten Kudus');
   const notarisWilayahKap = notarisWilayah.toUpperCase();
 
   const tglAktaStr = (data?.akta?.tanggal && data.akta.tanggal.trim())
@@ -353,31 +252,16 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
   };
 
   const addCenterBlock = (rawText, opts = {}, fieldKeys = []) => {
-    if (!rawText) return;
-    const clean = rawText.trim();
-    if (clean.length <= maxChars) {
-      pushTrackedLine({ text: clean, align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline }, fieldKeys);
-    } else {
-      const words = clean.split(' ');
-      let cur = [];
-      let curLen = 0;
-      for (const w of words) {
-        const nextLen = curLen === 0 ? w.length : curLen + 1 + w.length;
-        if (nextLen <= maxChars) {
-          cur.push(w);
-          curLen = nextLen;
-        } else {
-          if (cur.length > 0) {
-            pushTrackedLine({ text: cur.join(' '), align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline }, fieldKeys);
-          }
-          cur = [w];
-          curLen = w.length;
-        }
-      }
-      if (cur.length > 0) {
-        pushTrackedLine({ text: cur.join(' '), align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline }, fieldKeys);
-      }
-    }
+    const centerLines = formatCenterNotaryLines(rawText, maxChars);
+    centerLines.forEach(text => {
+      pushTrackedLine({ text, align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline }, fieldKeys);
+    });
+  };
+
+  const addDashedHeading = (title, fieldKeys = []) => {
+    formatDashedCenterHeading(title, maxChars).forEach(text => {
+      pushTrackedLine({ text, align: 'center', bold: true }, fieldKeys);
+    });
   };
 
   const appendBlock = (rawText, fieldKeys = []) => {
@@ -543,7 +427,7 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
       ]);
 
       appendBlock(`- Bahwa para pemegang saham Perseroan telah mengambil keputusan sebagaimana ternyata dari –`);
-      pushTrackedLine({ text: '----- KEPUTUSAN SIRKULER PARA PEMEGANG SAHAM -----', align: 'center', bold: true });
+      addDashedHeading('KEPUTUSAN SIRKULER PARA PEMEGANG SAHAM');
       appendBlock(`perseroan terbatas ${entitasNama} yang dibuat secara dibawah tangan, ditandatangani oleh para pemegang saham Perseroan dan telah dibubuhi materai cukup dan dilekatkan pada minuta akta ini;`, ['ptNama']);
       const totalSahamAwal = Number(mf.modalSemulaSaham || data?.saham?.totalSeriA || 353201);
       appendBlock(`- Bahwa Keputusan Sirkuler Pemegang Saham tersebut telah ditandatangani sebagai bentuk persetujuan oleh seluruh pemegang saham dengan jumlah ${formatSaham(totalSahamAwal)} lembar saham, jumlah mana merupakan keseluruhan saham yang telah dikeluarkan dan diambil bagian oleh para pemegang saham dalam perseroan;`, ['modalSemulaSaham']);
@@ -558,14 +442,7 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
       appendBlock(`- Bahwa ${tipe === 'PT' ? 'para pemegang saham' : (tipe === 'UD' ? 'pemilik usaha' : 'para pesero')} ${sebutanEntitasKap} telah mengambil keputusan sebagaimana ternyata dari –`);
 
       const rawJudulSirkuler = `KEPUTUSAN SIRKULER ${tipe === 'PT' ? 'PARA PEMEGANG SAHAM' : (tipe === 'UD' ? 'PEMILIK USAHA' : 'PARA PESERO')}`;
-      if (rawJudulSirkuler.length + 8 <= maxChars) {
-        const diff = maxChars - rawJudulSirkuler.length - 2;
-        const leftDashes = Math.floor(diff / 2);
-        const rightDashes = diff - leftDashes;
-        pushTrackedLine({ text: '-'.repeat(leftDashes) + ' ' + rawJudulSirkuler + ' ' + '-'.repeat(rightDashes), align: 'center', bold: true });
-      } else {
-        addCenterBlock(rawJudulSirkuler);
-      }
+      addDashedHeading(rawJudulSirkuler);
 
       appendBlock(`${sebutanEntitas} “${entitasNama}” yang dibuat secara dibawah tangan, ditandatangani oleh ${labelPemberiKuasa} dan telah dibubuhi materai cukup dan dilekatkan pada minuta akta ini selanjutnya akan disebut juga “Keputusan Sirkuler ${labelSirkuler}”;`, ['ptNama']);
 
@@ -598,8 +475,9 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
 
       // Daftar rincian susunan pemegang saham baru
       pmList.forEach((ps, idx) => {
-        const pLabel = `${String.fromCharCode(97 + idx)}. `;
-        const rawPsNama = ps.nama ? (ps.nama.toLowerCase().startsWith('perseroan') ? ps.nama : `perseroan terbatas ${ps.nama}`) : 'perseroan terbatas ....................';
+        const pLabel = `${formatAlphaIndex(idx)}. `;
+        const cleanPsNama = sanitizeInlineField(ps.nama);
+        const rawPsNama = cleanPsNama ? (cleanPsNama.toLowerCase().startsWith('perseroan') ? cleanPsNama : `perseroan terbatas ${cleanPsNama}`) : 'perseroan terbatas ....................';
         appendBlock(`${pLabel}${rawPsNama}, tersebut diatas sebanyak ${formatSaham(ps.jumlahSaham)} saham atau senilai ${formatRupiah(ps.nominal)};`, ['pemegangSahamModal']);
       });
 
@@ -610,8 +488,8 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
       }
 
       appendBlock(`- Dengan demikian mengubah Pasal 4 ayat (2) Anggaran Dasar perseroan, sehingga untuk selanjutnya tertulis dan berbunyi sebagai berikut:`);
-      pushTrackedLine({ text: '------------------- M O D A L -------------------', align: 'center', bold: true });
-      pushTrackedLine({ text: '-------------------- Pasal 4 --------------------', align: 'center', bold: true });
+      addDashedHeading('M O D A L');
+      addDashedHeading('Pasal 4');
       appendBlock(`2. Dari Modal Dasar tersebut telah ditempatkan dan disetor sebagian, sebanyak ${formatSaham(totalSahamSemua)} saham dengan nilai nominal seluruhnya sebesar ${formatRupiah(totalNominalSemua)} oleh para pemegang saham yang telah mengambil bagian saham dengan rincian serta nilai nominal saham yang akan disebutkan pada akhir akta ini.`, ['modalMenjadiSaham', 'modalMenjadiNominal']);
       appendBlock(`- Bahwa dengan adanya peningkatan modal pada keputusan ini, dan bertalian dengan Modal Ditempatkan dan Modal Disetor sebagaimana dimaksud dalam pasal 4 ayat (2), maka bagian akhir Anggaran Dasar Perseroan menjadi berbunyi sebagai berikut:`);
       appendBlock(`- Modal ditempatkan sebagaimana dimaksud dalam Pasal 4 ayat (2) telah disetor penuh dengan uang tunai melalui kas perseroan oleh para pemegang saham:`);
@@ -619,7 +497,8 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
       // Rincian Penyetoran Saham format Kolom Notaris
       pmList.forEach((ps, idx) => {
         const psNum = `${idx + 1}. `;
-        const rawPsNama = ps.nama ? (ps.nama.toLowerCase().startsWith('perseroan') ? ps.nama : `perseroan terbatas ${ps.nama}`) : 'perseroan terbatas ....................';
+        const cleanPsNama = sanitizeInlineField(ps.nama);
+        const rawPsNama = cleanPsNama ? (cleanPsNama.toLowerCase().startsWith('perseroan') ? cleanPsNama : `perseroan terbatas ${cleanPsNama}`) : 'perseroan terbatas ....................';
         appendBlock(`${psNum}${rawPsNama}, tersebut diatas, sebanyak ${formatSaham(ps.jumlahSaham)} saham, dengan nilai nominal ${formatRupiah(ps.nominalPerSaham)} per saham, atau seluruhnya sebesar ${formatRupiah(ps.nominal)};`, ['pemegangSahamModal', 'nominalPerSaham']);
       });
 
@@ -660,34 +539,30 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
 
       if (Array.isArray(data?.pengurusBaru) && data.pengurusBaru.length > 0) {
         data.pengurusBaru.forEach(pejabat => {
-          const rawTitle = (pejabat.jabatan || 'PENGURUS').toUpperCase();
+          const rawTitle = val(pejabat.jabatan, 'PENGURUS').toUpperCase();
           const tglLahirStr = (pejabat.tanggalLahir && pejabat.tanggalLahir.trim()) ? formatTanggalBiasa(pejabat.tanggalLahir) : (isPreview ? '....................' : '');
-          const pNm = val(pejabat.nama, isPreview ? '..............................' : '');
+          const pSap = val(pejabat.sapaan, 'Tuan');
+          const pNm = val(pejabat.nama, isPreview ? '....................' : '');
           const pTmp = val(pejabat.tempatLahir, isPreview ? '....................' : '');
-          const pAlm = val(pejabat.alamat, isPreview ? '..................................................' : '');
+          const pWn = val(pejabat.kewarganegaraan, 'Indonesia');
+          const pPek = val(pejabat.pekerjaan, 'Karyawan Swasta');
+          const pAlm = val(pejabat.alamat, isPreview ? '....................' : '');
           const pNik = val(pejabat.nik, isPreview ? '................' : '');
-          const rawOfficerRight = `${pejabat.sapaan || 'Tuan'}. ${pNm}, lahir di ${pTmp}, pada ${tglLahirStr}, Warga Negara ${pejabat.kewarganegaraan || 'Indonesia'}, ${pejabat.pekerjaan || 'Karyawan Swasta'}, bertempat tinggal di ${pAlm}, pemegang Kartu Tanda Penduduk nomor: ${pNik};`;
+          const rawOfficerRight = `${pSap}. ${pNm}, lahir di ${pTmp}, pada ${tglLahirStr}, Warga Negara ${pWn}, ${pPek}, bertempat tinggal di ${pAlm}, pemegang Kartu Tanda Penduduk nomor: ${pNik};`;
 
-          if (rawTitle.length <= 18) {
-            const col1Width = 25;
-            const col2Width = maxChars - col1Width;
-            const jabatanLabel = `- ${rawTitle}`;
-            const diff1 = col1Width - jabatanLabel.length - 3;
-            const pad1 = diff1 > 0 ? ' ' + '-'.repeat(diff1 - 1) : '';
-            const firstPrefix = (jabatanLabel + pad1 + ' : ').padEnd(col1Width, '-');
-            const contPrefix = '-'.repeat(col1Width - 1) + ' ';
-
-            const rightLines = formatTextToNotaryLines(rawOfficerRight, col2Width);
-            rightLines.forEach((rLine, rIdx) => {
-              const prefix = rIdx === 0 ? firstPrefix : contPrefix;
-              pushTrackedLine({ text: prefix + rLine, align: 'left', bold: false }, ['pengurusBaru']);
-            });
-          } else {
-            appendBlock(`- ${rawTitle} : ${rawOfficerRight}`, ['pengurusBaru']);
-          }
+          formatOfficerColumnLines(rawTitle, rawOfficerRight, maxChars, formatTextToNotaryLines).forEach(lineObj => {
+            pushTrackedLine(lineObj, ['pengurusBaru']);
+          });
         });
       } else if (isPreview) {
-        appendBlock(`- PENGURUS BARU : Tuan. .............................., lahir di .........., pada ...................., Warga Negara Indonesia, Karyawan Swasta, bertempat tinggal di .................................................., pemegang Kartu Tanda Penduduk nomor: ................;`, ['pengurusBaru']);
+        formatOfficerColumnLines(
+          'PENGURUS BARU',
+          'Tuan. ......................., lahir di .........., pada ...................., Warga Negara Indonesia, Karyawan Swasta, bertempat tinggal di ...................., pemegang Kartu Tanda Penduduk nomor: ................;',
+          maxChars,
+          formatTextToNotaryLines
+        ).forEach(lineObj => {
+          pushTrackedLine(lineObj, ['pengurusBaru']);
+        });
       }
 
       appendBlock(`2) MENYETUJUI, bahwa terhitung sejak tanggal efektif pengangkatan ${tipe === 'PT' ? 'Direksi dan Dewan Komisaris tersebut diatas, kepada masing-masing Direktur dan Komisaris' : `${labelOrganBaru} tersebut diatas, kepada masing-masing pengurus`} diberikan kuasa, kewajiban, hak, dan kewenangan sesuai dengan tugas dan jabatan yang diemban menurut dan/atau berdasarkan Anggaran Dasar ${sebutanEntitasKap} maupun Undang-Undang yang berlaku dengan tanpa ada yang dikecualikan.`);
@@ -739,7 +614,7 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
     appendBlock(`- Penghadap dengan ini menjamin akan kebenaran identitas, dan/atau asli tandatangan atas dokumen-dokumen asli yang diserahkan oleh penghadap sesuai dengan dokumen-dokumen yang disampaikan kepada saya, Notaris, dan bertanggungjawab sepenuhnya atas hal-hal tersebut dan selanjutnya penghadap juga menyatakan telah mengetahui dan memahami seluruh isi akta ini, dan apabila di kemudian hari timbul tuntutan hukum mengenai hal tersebut yang menimbulkan suatu sengketa atas hal-hal tersebut karena sebab apapun juga, maka penghadap akan membebaskan Notaris dan saksi-saksi yang menandatangani akta ini dari segala tuntutan hukum.`);
     appendBlock(`- Penghadap telah dikenal oleh saya, Notaris.`);
 
-    pushTrackedLine({ text: '---------------- DEMIKIANLAH AKTA INI ---------------', align: 'center', bold: true });
+    addDashedHeading('DEMIKIANLAH AKTA INI');
 
     appendBlock(`- Dibuat dan dilangsungkan di ${notarisWilayah}, pada hari dan tanggal tersebut pada bagian awal akta ini dengan dihadiri oleh:`, ['notarisWilayah']);
     const sk1Sapaan = data?.saksi1?.sapaan || 'Nona';
@@ -767,7 +642,7 @@ export function buildDeedContentLines(data, maxChars = 53, options = {}) {
     appendBlock(`- Dilangsungkan dengan tanpa tambahan, tanpa penggantian, dan tanpa coretan.`);
     appendBlock(`- Minuta akta ini telah ditandatangani dengan sempurna.`);
 
-    pushTrackedLine({ text: '---- DIBERIKAN SEBAGAI SALINAN YANG SAMA BUNYINYA ---', align: 'center', bold: true });
+    addDashedHeading('DIBERIKAN SEBAGAI SALINAN YANG SAMA BUNYINYA');
     addCenterBlock(`NOTARIS DI - ${notarisWilayahKap}`, {}, ['notarisWilayah']);
     pushTrackedLine({ text: '', align: 'center', bold: false, isSignatureSpace: true });
     const notarisTtdDisplay = rawNotarisNama
@@ -789,35 +664,20 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
   const tipe = (data.badanUsaha && data.badanUsaha.tipe) || 'PT';
 
   const val = (str, fallback = '....................') => {
-    return (str && typeof str === 'string' && str.trim()) ? str.trim() : fallback;
+    const cleaned = sanitizeInlineField(str);
+    return cleaned || fallback;
   };
 
   const addCenter = (rawText, opts = {}) => {
-    if (!rawText) return;
-    const clean = rawText.trim();
-    if (clean.length <= maxChars) {
-      lines.push({ text: clean, align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline });
-    } else {
-      const words = clean.split(' ');
-      let cur = [];
-      let curLen = 0;
-      for (const w of words) {
-        const nextLen = curLen === 0 ? w.length : curLen + 1 + w.length;
-        if (nextLen <= maxChars) {
-          cur.push(w);
-          curLen = nextLen;
-        } else {
-          if (cur.length > 0) {
-            lines.push({ text: cur.join(' '), align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline });
-          }
-          cur = [w];
-          curLen = w.length;
-        }
-      }
-      if (cur.length > 0) {
-        lines.push({ text: cur.join(' '), align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline });
-      }
-    }
+    formatCenterNotaryLines(rawText, maxChars).forEach(text => {
+      lines.push({ text, align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline });
+    });
+  };
+
+  const addDashedHeading = (title) => {
+    formatDashedCenterHeading(title, maxChars).forEach(text => {
+      lines.push({ text, align: 'center', bold: true });
+    });
   };
 
   const appendBlock = (rawText) => {
@@ -870,18 +730,15 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
     labelOrganBaru = 'susunan kepemilikan dan kuasa pengelola Usaha Dagang';
   }
 
-  const entitasNama = (data.pt?.nama && data.pt.nama.trim()) ? data.pt.nama.trim().toUpperCase() : '..............................';
-  const entitasKedudukan = (data.pt?.kedudukan && data.pt.kedudukan.trim()) ? data.pt.kedudukan.trim().toUpperCase() : '....................';
-  const rawNotarisNama = (data.notaris?.nama || '').trim();
+  const entitasNama = sanitizeInlineField(data.pt?.nama).toUpperCase() || '..............................';
+  const entitasKedudukan = sanitizeInlineField(data.pt?.kedudukan).toUpperCase() || '....................';
+  const rawNotarisNama = sanitizeInlineField(data.notaris?.nama);
   const notarisNamaClean = rawNotarisNama.includes(',') ? rawNotarisNama.split(',')[0].trim() : rawNotarisNama;
   const notarisNamaDisplay = notarisNamaClean ? notarisNamaClean.toUpperCase() : '........................................';
-  const notarisGelarPanjang = (data.notaris?.gelarPanjang && data.notaris.gelarPanjang.trim())
-    ? data.notaris.gelarPanjang.trim()
-    : 'Sarjana Hukum, Magister Kenotariatan';
-  const notarisGelarSingkat = (data.notaris?.gelarSingkat && data.notaris.gelarSingkat.trim())
-    ? data.notaris.gelarSingkat.trim()
-    : (rawNotarisNama.includes(',') ? rawNotarisNama.substring(rawNotarisNama.indexOf(',') + 1).trim() : 'S.H., M.Kn.');
-  const notarisWilayah = (data.notaris?.wilayah && data.notaris.wilayah.trim()) ? data.notaris.wilayah.trim() : '....................';
+  const notarisGelarPanjang = sanitizeInlineField(data.notaris?.gelarPanjang) || 'Sarjana Hukum, Magister Kenotariatan';
+  const notarisGelarSingkat = sanitizeInlineField(data.notaris?.gelarSingkat) ||
+    (rawNotarisNama.includes(',') ? rawNotarisNama.substring(rawNotarisNama.indexOf(',') + 1).trim() : 'S.H., M.Kn.');
+  const notarisWilayah = sanitizeInlineField(data.notaris?.wilayah) || '....................';
   const notarisWilayahKap = notarisWilayah.toUpperCase();
 
   // Jika bagian ini memiliki template kustom per-draf, terapkan template kustom tersebut
@@ -1035,7 +892,7 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
       ]);
 
       appendBlock(`- Bahwa para pemegang saham Perseroan telah mengambil keputusan sebagaimana ternyata dari –`);
-      lines.push({ text: '----- KEPUTUSAN SIRKULER PARA PEMEGANG SAHAM -----', align: 'center', bold: true });
+      addDashedHeading('KEPUTUSAN SIRKULER PARA PEMEGANG SAHAM');
       appendBlock(`perseroan terbatas ${entitasNama} yang dibuat secara dibawah tangan, ditandatangani oleh para pemegang saham Perseroan dan telah dibubuhi materai cukup dan dilekatkan pada minuta akta ini;`);
       const totalSahamAwal = Number(mf.modalSemulaSaham || data.saham?.totalSeriA || 353201);
       appendBlock(`- Bahwa Keputusan Sirkuler Pemegang Saham tersebut telah ditandatangani sebagai bentuk persetujuan oleh seluruh pemegang saham dengan jumlah ${formatSaham(totalSahamAwal)} lembar saham, jumlah mana merupakan keseluruhan saham yang telah dikeluarkan dan diambil bagian oleh para pemegang saham dalam perseroan;`);
@@ -1050,14 +907,7 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
       appendBlock(`- Bahwa ${tipe === 'PT' ? 'para pemegang saham' : (tipe === 'UD' ? 'pemilik usaha' : 'para pesero')} ${sebutanEntitasKap} telah mengambil keputusan sebagaimana ternyata dari –`);
 
       const rawJudulSirkuler = `KEPUTUSAN SIRKULER ${tipe === 'PT' ? 'PARA PEMEGANG SAHAM' : (tipe === 'UD' ? 'PEMILIK USAHA' : 'PARA PESERO')}`;
-      if (rawJudulSirkuler.length + 8 <= maxChars) {
-        const diff = maxChars - rawJudulSirkuler.length - 2;
-        const leftDashes = Math.floor(diff / 2);
-        const rightDashes = diff - leftDashes;
-        lines.push({ text: '-'.repeat(leftDashes) + ' ' + rawJudulSirkuler + ' ' + '-'.repeat(rightDashes), align: 'center', bold: true });
-      } else {
-        addCenter(rawJudulSirkuler);
-      }
+      addDashedHeading(rawJudulSirkuler);
 
       appendBlock(`${sebutanEntitas} “${entitasNama}” yang dibuat secara dibawah tangan, ditandatangani oleh ${labelPemberiKuasa} dan telah dibubuhi materai cukup dan dilekatkan pada minuta akta ini selanjutnya akan disebut juga “Keputusan Sirkuler ${labelSirkuler}”;`);
 
@@ -1091,8 +941,9 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
       const pmList = mf.pmList;
 
       pmList.forEach((ps, idx) => {
-        const pLabel = `${String.fromCharCode(97 + idx)}. `;
-        const rawPsNama = ps.nama ? (ps.nama.toLowerCase().startsWith('perseroan') ? ps.nama : `perseroan terbatas ${ps.nama}`) : 'perseroan terbatas ....................';
+        const pLabel = `${formatAlphaIndex(idx)}. `;
+        const cleanPsNama = sanitizeInlineField(ps.nama);
+        const rawPsNama = cleanPsNama ? (cleanPsNama.toLowerCase().startsWith('perseroan') ? cleanPsNama : `perseroan terbatas ${cleanPsNama}`) : 'perseroan terbatas ....................';
         appendBlock(`${pLabel}${rawPsNama}, tersebut diatas sebanyak ${formatSaham(ps.jumlahSaham)} saham atau senilai ${formatRupiah(ps.nominal)};`);
       });
 
@@ -1103,15 +954,16 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
       }
 
       appendBlock(`- Dengan demikian mengubah Pasal 4 ayat (2) Anggaran Dasar perseroan, sehingga untuk selanjutnya tertulis dan berbunyi sebagai berikut:`);
-      lines.push({ text: '------------------- M O D A L -------------------', align: 'center', bold: true });
-      lines.push({ text: '-------------------- Pasal 4 --------------------', align: 'center', bold: true });
+      addDashedHeading('M O D A L');
+      addDashedHeading('Pasal 4');
       appendBlock(`2. Dari Modal Dasar tersebut telah ditempatkan dan disetor sebagian, sebanyak ${formatSaham(totalSahamSemua)} saham dengan nilai nominal seluruhnya sebesar ${formatRupiah(totalNominalSemua)} oleh para pemegang saham yang telah mengambil bagian saham dengan rincian serta nilai nominal saham yang akan disebutkan pada akhir akta ini.`);
       appendBlock(`- Bahwa dengan adanya peningkatan modal pada keputusan ini, dan bertalian dengan Modal Ditempatkan dan Modal Disetor sebagaimana dimaksud dalam pasal 4 ayat (2), maka bagian akhir Anggaran Dasar Perseroan menjadi berbunyi sebagai berikut:`);
       appendBlock(`- Modal ditempatkan sebagaimana dimaksud dalam Pasal 4 ayat (2) telah disetor penuh dengan uang tunai melalui kas perseroan oleh para pemegang saham:`);
 
       pmList.forEach((ps, idx) => {
         const psNum = `${idx + 1}. `;
-        const rawPsNama = ps.nama ? (ps.nama.toLowerCase().startsWith('perseroan') ? ps.nama : `perseroan terbatas ${ps.nama}`) : 'perseroan terbatas ....................';
+        const cleanPsNama = sanitizeInlineField(ps.nama);
+        const rawPsNama = cleanPsNama ? (cleanPsNama.toLowerCase().startsWith('perseroan') ? cleanPsNama : `perseroan terbatas ${cleanPsNama}`) : 'perseroan terbatas ....................';
         appendBlock(`${psNum}${rawPsNama}, tersebut diatas, sebanyak ${formatSaham(ps.jumlahSaham)} saham, dengan nilai nominal ${formatRupiah(ps.nominalPerSaham)} per saham, atau seluruhnya sebesar ${formatRupiah(ps.nominal)};`);
       });
 
@@ -1158,35 +1010,24 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
         const rawTitle = val(pejabat.jabatan, 'PENGURUS').toUpperCase();
         const tglLahirStr = (pejabat.tanggalLahir && pejabat.tanggalLahir.trim()) ? formatTanggalBiasa(pejabat.tanggalLahir) : '....................';
         const sapaanO = val(pejabat.sapaan, 'Tuan');
-        const namaO = val(pejabat.nama, '..............................');
+        const namaO = val(pejabat.nama, '....................');
         const tempatO = val(pejabat.tempatLahir, '....................');
         const wnO = val(pejabat.kewarganegaraan, 'Indonesia');
         const pekO = val(pejabat.pekerjaan, 'Karyawan Swasta');
-        const alamatO = val(pejabat.alamat, '..................................................');
+        const alamatO = val(pejabat.alamat, '....................');
         const nikO = val(pejabat.nik, '................');
 
         const rawOfficerRight = `${sapaanO}. ${namaO}, lahir di ${tempatO}, pada ${tglLahirStr}, Warga Negara ${wnO}, ${pekO}, bertempat tinggal di ${alamatO}, pemegang Kartu Tanda Penduduk nomor: ${nikO};`;
 
-        if (rawTitle.length <= 18) {
-          const col1Width = 25;
-          const col2Width = maxChars - col1Width;
-          const jabatanLabel = `- ${rawTitle}`;
-          const diff1 = col1Width - jabatanLabel.length - 3;
-          const pad1 = diff1 > 0 ? ' ' + '-'.repeat(diff1 - 1) : '';
-          const firstPrefix = (jabatanLabel + pad1 + ' : ').padEnd(col1Width, '-');
-          const contPrefix = '-'.repeat(col1Width - 1) + ' ';
-
-          const rightLines = formatTextToNotaryLines(rawOfficerRight, col2Width);
-          rightLines.forEach((rLine, rIdx) => {
-            const prefix = rIdx === 0 ? firstPrefix : contPrefix;
-            lines.push({ text: prefix + rLine, align: 'left', bold: false });
-          });
-        } else {
-          appendBlock(`- ${rawTitle} : ${rawOfficerRight}`);
-        }
+        lines.push(...formatOfficerColumnLines(rawTitle, rawOfficerRight, maxChars, formatTextToNotaryLines));
       });
     } else {
-      appendBlock(`- PENGURUS BARU : Tuan. .............................., lahir di .........., pada ...................., Warga Negara Indonesia, Karyawan Swasta, bertempat tinggal di .................................................., pemegang Kartu Tanda Penduduk nomor: ................;`);
+      lines.push(...formatOfficerColumnLines(
+        'PENGURUS BARU',
+        'Tuan. ......................., lahir di .........., pada ...................., Warga Negara Indonesia, Karyawan Swasta, bertempat tinggal di ...................., pemegang Kartu Tanda Penduduk nomor: ................;',
+        maxChars,
+        formatTextToNotaryLines
+      ));
     }
 
     appendBlock(`2) MENYETUJUI, bahwa terhitung sejak tanggal efektif pengangkatan ${tipe === 'PT' ? 'Direksi dan Dewan Komisaris tersebut diatas, kepada masing-masing Direktur dan Komisaris' : `${labelOrganBaru} tersebut diatas, kepada masing-masing pengurus`} diberikan kuasa, kewajiban, hak, dan kewenangan sesuai dengan tugas dan jabatan yang diemban menurut dan/atau berdasarkan Anggaran Dasar ${sebutanEntitasKap} maupun Undang-Undang yang berlaku dengan tanpa ada yang dikecualikan.`);
@@ -1248,7 +1089,7 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
     appendBlock(`- Penghadap dengan ini menjamin akan kebenaran identitas, dan/atau asli tandatangan atas dokumen-dokumen asli yang diserahkan oleh penghadap sesuai dengan dokumen-dokumen yang disampaikan kepada saya, Notaris, dan bertanggungjawab sepenuhnya atas hal-hal tersebut dan selanjutnya penghadap juga menyatakan telah mengetahui dan memahami seluruh isi akta ini, dan apabila di kemudian hari timbul tuntutan hukum mengenai hal tersebut yang menimbulkan suatu sengketa atas hal-hal tersebut karena sebab apapun juga, maka penghadap akan membebaskan Notaris dan saksi-saksi yang menandatangani akta ini dari segala tuntutan hukum.`);
     appendBlock(`- Penghadap telah dikenal oleh saya, Notaris.`);
 
-    lines.push({ text: '---------------- DEMIKIANLAH AKTA INI ---------------', align: 'center', bold: true });
+    addDashedHeading('DEMIKIANLAH AKTA INI');
 
     appendBlock(`- Dibuat dan dilangsungkan di ${notarisWilayah}, pada hari dan tanggal tersebut pada bagian awal akta ini dengan dihadiri oleh:`);
 
@@ -1278,7 +1119,7 @@ export function buildSectionDeedLines(sectionNum, data, maxChars = 53) {
     appendBlock(`- Minuta akta ini telah ditandatangani dengan sempurna.`);
 
     const notarisTtdDisplay = notarisNamaClean ? `${notarisNamaClean.toUpperCase()}, ${notarisGelarSingkat}` : '........................................';
-    lines.push({ text: '---- DIBERIKAN SEBAGAI SALINAN YANG SAMA BUNYINYA ---', align: 'center', bold: true });
+    addDashedHeading('DIBERIKAN SEBAGAI SALINAN YANG SAMA BUNYINYA');
     addCenter(`NOTARIS DI - ${notarisWilayahKap}`);
     lines.push({ text: '', align: 'center', bold: false, isSignatureSpace: true });
     addCenter(`(${notarisTtdDisplay})`, { underline: true });
@@ -1423,10 +1264,10 @@ export async function generateAktaWord(data) {
               height: 16838 // Kertas A4: Tinggi 297mm (11.693 in * 1440)
             },
             margin: {
-              top: 432,   // 0.3" * 1440 = 432 dxa
-              bottom: 274,// 0.19" * 1440 = 274 dxa
+              top: 400,   // ~0.28" * 1440 = 400 dxa (ruang vertikal aman tepat 30 baris)
+              bottom: 200,// ~0.14" * 1440 = 200 dxa
               left: 3686, // 2.56" * 1440 = 3686 dxa (Lajur Renvoi / Ruang Catatan Pinggir Akta)
-              right: 562  // 0.39" * 1440 = 562 dxa
+              right: 450  // ~0.31" * 1440 = 450 dxa (ruang horizontal aman agar 53 char + '---' tidak turun baris di Word)
             }
           }
         },
@@ -1436,8 +1277,9 @@ export async function generateAktaWord(data) {
   });
 
   const blob = await Packer.toBlob(doc);
-  const cleanEntitasName = entitasNama.replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `Salinan_Akta_No_${data.akta?.nomor || '1'}_${tipe}_${cleanEntitasName}.docx`;
+  const cleanEntitasName = sanitizeFilenameSegment(entitasNama, 'AKTA', 60);
+  const cleanNomorAkta = sanitizeFilenameSegment(data.akta?.nomor, '1', 20);
+  const filename = `Salinan_Akta_No_${cleanNomorAkta}_${tipe}_${cleanEntitasName}.docx`;
   if (typeof window !== 'undefined' && typeof saveAs === 'function' && !window.__TAURI__?.core?.invoke) {
     saveAs(blob, filename);
   }
@@ -1451,9 +1293,9 @@ export async function generateAktaWord(data) {
 export function buildInternalDocModel(data) {
   const tipe = (data?.badanUsaha && data.badanUsaha.tipe) || 'PT';
   const subTipe = resolveSubTipe(data, 'SIRKULER_MODAL');
-  const entitasNama = (data?.pt?.nama || `PT. ${tipe}`).toUpperCase();
-  const entitasKedudukan = data?.pt?.kedudukan || 'Kabupaten Kudus';
-  const cleanEntitasName = entitasNama.replace(/[^a-zA-Z0-9]/g, '_');
+  const entitasNama = (sanitizeInlineField(data?.pt?.nama) || `PT. ${tipe}`).toUpperCase();
+  const entitasKedudukan = sanitizeInlineField(data?.pt?.kedudukan) || 'Kabupaten Kudus';
+  const cleanEntitasName = sanitizeFilenameSegment(entitasNama, `PT_${tipe}`, 60);
 
   const isRups = subTipe === 'RUPS_MODAL';
   const mf = resolveModalFields(data, isRups);
@@ -1589,9 +1431,14 @@ export async function exportInternalDocx(data) {
     docxParagraphs.push(createP(p.text, { bold: p.bold, before: p.before, after: p.after }));
   });
 
+  const bankColWidths = [720, 2340, 1980, 1800, 2186]; // Total 9026 dxa (Lebar A4 minus margin 1")
+  const cellMarginStd = { top: 80, bottom: 80, left: 100, right: 100 };
+
   // TABEL 1: Rincian Bukti Setor Bank
-  const headerCells = ['No.', 'Jumlah Setoran', 'Tanggal Setoran', 'Nama Bank', 'Nomor Bukti Setor'].map(title =>
+  const headerCells = ['No.', 'Jumlah Setoran', 'Tanggal Setoran', 'Nama Bank', 'Nomor Bukti Setor'].map((title, colIdx) =>
     new TableCell({
+      width: { size: bankColWidths[colIdx], type: WidthType.DXA },
+      margins: cellMarginStd,
       shading: { fill: 'F3F4F6' },
       children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(title, { bold: true, size: 20 })] })]
     })
@@ -1599,19 +1446,22 @@ export async function exportInternalDocx(data) {
 
   const bodyRows = m.bankTableRows.map(r =>
     new TableRow({
+      cantSplit: true,
       children: [
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(r.no, { size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(r.nominal, { size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(r.tgl, { size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(r.bank, { size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(r.ref, { size: 20 })] })] })
+        new TableCell({ width: { size: bankColWidths[0], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(r.no, { size: 20 })] })] }),
+        new TableCell({ width: { size: bankColWidths[1], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(r.nominal, { size: 20 })] })] }),
+        new TableCell({ width: { size: bankColWidths[2], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(r.tgl, { size: 20 })] })] }),
+        new TableCell({ width: { size: bankColWidths[3], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(r.bank, { size: 20 })] })] }),
+        new TableCell({ width: { size: bankColWidths[4], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(r.ref, { size: 20 })] })] })
       ]
     })
   );
 
   const bankTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [new TableRow({ children: headerCells }), ...bodyRows]
+    layout: TableLayoutType.FIXED,
+    width: { size: 9026, type: WidthType.DXA },
+    columnWidths: bankColWidths,
+    rows: [new TableRow({ cantSplit: true, tableHeader: true, children: headerCells }), ...bodyRows]
   });
 
   docxParagraphs.push(bankTable);
@@ -1620,8 +1470,11 @@ export async function exportInternalDocx(data) {
   // TABEL 2: Susunan Pemegang Saham Baru
   docxParagraphs.push(createP('Susunan Kepemilikan Saham Perseroan Setelah Peningkatan Modal:', { bold: true, before: 120, after: 60 }));
 
-  const shareHeaderCells = ['No.', 'Nama Pemegang Saham', 'Jumlah Saham (Lembar)', 'Nilai Nominal (Rp)'].map(title =>
+  const shareColWidths = [720, 3406, 2250, 2650]; // Total 9026 dxa
+  const shareHeaderCells = ['No.', 'Nama Pemegang Saham', 'Jumlah Saham (Lembar)', 'Nilai Nominal (Rp)'].map((title, colIdx) =>
     new TableCell({
+      width: { size: shareColWidths[colIdx], type: WidthType.DXA },
+      margins: cellMarginStd,
       shading: { fill: 'F3F4F6' },
       children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(title, { bold: true, size: 20 })] })]
     })
@@ -1629,28 +1482,32 @@ export async function exportInternalDocx(data) {
 
   const shareRows = m.pmList.map((ps, idx) =>
     new TableRow({
+      cantSplit: true,
       children: [
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(`${idx + 1}.`, { size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ children: [createRun(ps.nama, { size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(formatSaham(ps.jumlahSaham), { size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(formatRupiah(ps.nominal), { size: 20 })] })] })
+        new TableCell({ width: { size: shareColWidths[0], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun(`${idx + 1}.`, { size: 20 })] })] }),
+        new TableCell({ width: { size: shareColWidths[1], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ children: [createRun(sanitizeInlineField(ps.nama) || '....................', { size: 20 })] })] }),
+        new TableCell({ width: { size: shareColWidths[2], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(formatSaham(ps.jumlahSaham), { size: 20 })] })] }),
+        new TableCell({ width: { size: shareColWidths[3], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(formatRupiah(ps.nominal), { size: 20 })] })] })
       ]
     })
   );
 
   shareRows.push(
     new TableRow({
+      cantSplit: true,
       children: [
-        new TableCell({ columnSpan: 2, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun('TOTAL KESELURUHAN', { bold: true, size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(formatSaham(m.totalSahamSemua), { bold: true, size: 20 })] })] }),
-        new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(formatRupiah(m.totalNominalSemua), { bold: true, size: 20 })] })] })
+        new TableCell({ width: { size: shareColWidths[0] + shareColWidths[1], type: WidthType.DXA }, margins: cellMarginStd, columnSpan: 2, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [createRun('TOTAL KESELURUHAN', { bold: true, size: 20 })] })] }),
+        new TableCell({ width: { size: shareColWidths[2], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(formatSaham(m.totalSahamSemua), { bold: true, size: 20 })] })] }),
+        new TableCell({ width: { size: shareColWidths[3], type: WidthType.DXA }, margins: cellMarginStd, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [createRun(formatRupiah(m.totalNominalSemua), { bold: true, size: 20 })] })] })
       ]
     })
   );
 
   const shareTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [new TableRow({ children: shareHeaderCells }), ...shareRows]
+    layout: TableLayoutType.FIXED,
+    width: { size: 9026, type: WidthType.DXA },
+    columnWidths: shareColWidths,
+    rows: [new TableRow({ cantSplit: true, tableHeader: true, children: shareHeaderCells }), ...shareRows]
   });
 
   docxParagraphs.push(shareTable);

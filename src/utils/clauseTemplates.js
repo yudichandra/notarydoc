@@ -2,6 +2,14 @@
 // Mendukung kustomisasi kalimat per bagian (Bagian 1 s.d. Bagian 6) untuk draf aktif
 
 import { formatTanggalAkta, formatJamAkta, formatTanggalBiasa, formatTanggalTanpaAwalan, formatSaham, formatRupiah } from './terbilang.js';
+import {
+  formatTextToNotaryLines,
+  formatCenterNotaryLines,
+  formatDashedCenterHeading,
+  formatOfficerColumnLines,
+  sanitizeInlineField,
+  sanitizeNotaryText
+} from './notaryLineFormatter.js';
 
 export const SECTION_NAMES = {
   1: 'Kepala Akta & Notaris',
@@ -369,7 +377,8 @@ export function buildPlaceholderMap(data, sectionNum, isPreview = false) {
   const tipe = (data.badanUsaha && data.badanUsaha.tipe) || 'PT';
 
   const val = (str, fallback = '....................') => {
-    return (str && typeof str === 'string' && str.trim()) ? str.trim() : (isPreview ? fallback : '');
+    const cleaned = sanitizeInlineField(str);
+    return cleaned || (isPreview ? fallback : '');
   };
 
   let sebutanEntitas = 'perseroan terbatas';
@@ -406,19 +415,22 @@ export function buildPlaceholderMap(data, sectionNum, isPreview = false) {
     sebutanPihak = 'pemilik usaha';
   }
 
-  const rawNotarisNama = (data.notaris?.nama || '').trim();
+  const rawNotarisNama = sanitizeInlineField(data.notaris?.nama);
   const notarisNamaClean = rawNotarisNama.includes(',') ? rawNotarisNama.split(',')[0].trim() : rawNotarisNama;
   const notarisNamaDisplay = notarisNamaClean ? notarisNamaClean.toUpperCase() : (isPreview ? '........................................' : 'GRENDI JAYA DARMAWAN');
-  const notarisGelarPanjang = (data.notaris?.gelarPanjang && data.notaris.gelarPanjang.trim())
-    ? data.notaris.gelarPanjang.trim()
-    : 'Sarjana Hukum, Magister Kenotariatan';
-  const notarisGelarSingkat = (data.notaris?.gelarSingkat && data.notaris.gelarSingkat.trim())
-    ? data.notaris.gelarSingkat.trim()
-    : (rawNotarisNama.includes(',') ? rawNotarisNama.substring(rawNotarisNama.indexOf(',') + 1).trim() : 'S.H., M.Kn.');
-  const notarisWilayah = (data.notaris?.wilayah && data.notaris.wilayah.trim()) ? data.notaris.wilayah.trim().toUpperCase() : (isPreview ? '....................' : 'KABUPATEN KUDUS');
+  const notarisGelarPanjang = sanitizeInlineField(data.notaris?.gelarPanjang) || 'Sarjana Hukum, Magister Kenotariatan';
+  const notarisGelarSingkat = sanitizeInlineField(data.notaris?.gelarSingkat) ||
+    (rawNotarisNama.includes(',') ? rawNotarisNama.substring(rawNotarisNama.indexOf(',') + 1).trim() : 'S.H., M.Kn.');
+  const notarisWilayah = sanitizeInlineField(data.notaris?.wilayah)
+    ? sanitizeInlineField(data.notaris?.wilayah).toUpperCase()
+    : (isPreview ? '....................' : 'KABUPATEN KUDUS');
 
-  const entitasNama = (data.pt?.nama && data.pt.nama.trim()) ? data.pt.nama.trim().toUpperCase() : (isPreview ? '..............................' : `USAHA ${tipe}`);
-  const entitasKedudukan = (data.pt?.kedudukan && data.pt.kedudukan.trim()) ? data.pt.kedudukan.trim().toUpperCase() : (isPreview ? '....................' : 'KABUPATEN KUDUS');
+  const entitasNama = sanitizeInlineField(data.pt?.nama)
+    ? sanitizeInlineField(data.pt?.nama).toUpperCase()
+    : (isPreview ? '..............................' : `USAHA ${tipe}`);
+  const entitasKedudukan = sanitizeInlineField(data.pt?.kedudukan)
+    ? sanitizeInlineField(data.pt?.kedudukan).toUpperCase()
+    : (isPreview ? '....................' : 'KABUPATEN KUDUS');
 
   const tglAktaStr = (data.akta?.tanggal && data.akta.tanggal.trim()) 
     ? formatTanggalAkta(data.akta.tanggal) 
@@ -477,16 +489,16 @@ export function buildPlaceholderMap(data, sectionNum, isPreview = false) {
       const rawTitle = val(pejabat.jabatan, 'PENGURUS').toUpperCase();
       const tglLahirStr = (pejabat.tanggalLahir && pejabat.tanggalLahir.trim()) ? formatTanggalBiasa(pejabat.tanggalLahir) : '....................';
       const sapaanO = val(pejabat.sapaan, 'Tuan');
-      const namaO = val(pejabat.nama, '..............................');
+      const namaO = val(pejabat.nama, '....................');
       const tempatO = val(pejabat.tempatLahir, '....................');
       const wnO = val(pejabat.kewarganegaraan, 'Indonesia');
       const pekO = val(pejabat.pekerjaan, 'Karyawan Swasta');
-      const alamatO = val(pejabat.alamat, '..................................................');
+      const alamatO = val(pejabat.alamat, '....................');
       const nikO = val(pejabat.nik, '................');
       return `- ${rawTitle} : ${sapaanO}. ${namaO}, lahir di ${tempatO}, pada ${tglLahirStr}, Warga Negara ${wnO}, ${pekO}, bertempat tinggal di ${alamatO}, pemegang Kartu Tanda Penduduk nomor: ${nikO};`;
     }).join('\n');
   } else {
-    rincianPengurusText = `- PENGURUS BARU : Tuan. .............................., lahir di .........., pada ...................., Warga Negara Indonesia, Karyawan Swasta, bertempat tinggal di .................................................., pemegang Kartu Tanda Penduduk nomor: ................;`;
+    rincianPengurusText = `- PENGURUS BARU : Tuan. ......................., lahir di .........., pada ...................., Warga Negara Indonesia, Karyawan Swasta, bertempat tinggal di ...................., pemegang Kartu Tanda Penduduk nomor: ................;`;
   }
 
   // Saksi 1 & 2
@@ -617,40 +629,28 @@ export function substitutePlaceholders(templateStr, data, sectionNum, isPreview 
 export function renderTemplateTextToLines(renderedText, maxChars = 53, formatTextToNotaryLinesFn) {
   const lines = [];
   if (!renderedText) return lines;
-
-  const paragraphs = renderedText.split('\n');
+  const lineFmt = formatTextToNotaryLinesFn || formatTextToNotaryLines;
+  const normalizedText = sanitizeNotaryText(renderedText, { preserveNewlines: true });
+  const paragraphs = normalizedText.split('\n');
 
   const addCenterBlock = (rawText, opts = {}) => {
-    if (!rawText) return;
-    const clean = rawText.trim();
-    if (clean.length <= maxChars) {
-      lines.push({ text: clean, align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline });
-    } else {
-      const words = clean.split(' ');
-      let cur = [];
-      let curLen = 0;
-      for (const w of words) {
-        const nextLen = curLen === 0 ? w.length : curLen + 1 + w.length;
-        if (nextLen <= maxChars) {
-          cur.push(w);
-          curLen = nextLen;
-        } else {
-          if (cur.length > 0) {
-            lines.push({ text: cur.join(' '), align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline });
-          }
-          cur = [w];
-          curLen = w.length;
-        }
-      }
-      if (cur.length > 0) {
-        lines.push({ text: cur.join(' '), align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline });
-      }
-    }
+    formatCenterNotaryLines(rawText, maxChars).forEach(text => {
+      lines.push({ text, align: 'center', bold: opts.bold !== undefined ? opts.bold : true, underline: !!opts.underline });
+    });
   };
 
   for (let i = 0; i < paragraphs.length; i++) {
     const rawP = paragraphs[i].trim();
     if (!rawP) continue;
+
+    // Deteksi baris pembatas simetris ber-dash (---- JUDUL ----)
+    const dashedMatch = rawP.match(/^-{3,}\s+(.+?)\s+-{3,}$/);
+    if (dashedMatch) {
+      formatDashedCenterHeading(dashedMatch[1], maxChars).forEach(text => {
+        lines.push({ text, align: 'center', bold: true });
+      });
+      continue;
+    }
 
     // Deteksi baris yang perlu perataan tengah (Center/Bold)
     const isHeading = rawP.startsWith('AKTA PERNYATAAN') ||
@@ -662,40 +662,34 @@ export function renderTemplateTextToLines(renderedText, maxChars = 53, formatTex
       rawP.startsWith('PERUSAHAAN PERORANGAN') ||
       rawP.startsWith('BERKEDUDUKAN DI') ||
       rawP.startsWith('Nomor :') ||
-      rawP.startsWith('----') ||
       rawP.startsWith('NOTARIS DI') ||
+      (rawP.startsWith('“') && rawP.endsWith('”')) ||
       (rawP.startsWith('(') && rawP.endsWith(')'));
 
     if (isHeading) {
       const isUnderlined = rawP.startsWith('(') && rawP.endsWith(')');
       addCenterBlock(rawP, { bold: true, underline: isUnderlined });
-    } else if (rawP.startsWith('- ') && rawP.includes(' : ')) {
-      const colonIdx = rawP.indexOf(' : ');
-      const rawTitle = rawP.substring(2, colonIdx).trim().toUpperCase();
-      const rawOfficerRight = rawP.substring(colonIdx + 3).trim();
-
-      if (rawTitle.length <= 18) {
-        const col1Width = 25;
-        const col2Width = maxChars - col1Width;
-        const jabatanLabel = `- ${rawTitle}`;
-        const diff1 = col1Width - jabatanLabel.length - 3;
-        const pad1 = diff1 > 0 ? ' ' + '-'.repeat(diff1 - 1) : '';
-        const firstPrefix = (jabatanLabel + pad1 + ' : ').padEnd(col1Width, '-');
-        const contPrefix = '-'.repeat(col1Width - 1) + ' ';
-
-        const rightLines = formatTextToNotaryLinesFn(rawOfficerRight, col2Width);
-        rightLines.forEach((rLine, rIdx) => {
-          const prefix = rIdx === 0 ? firstPrefix : contPrefix;
-          lines.push({ text: prefix + rLine, align: 'left', bold: false });
-        });
-      } else {
-        const formatted = formatTextToNotaryLinesFn(rawP, maxChars);
-        formatted.forEach(l => lines.push({ text: l, align: 'left', bold: false }));
-      }
-    } else {
-      const formatted = formatTextToNotaryLinesFn(rawP, maxChars);
-      formatted.forEach(l => lines.push({ text: l, align: 'left', bold: false }));
+      continue;
     }
+
+    const colonIdx = rawP.indexOf(' : ');
+    if (rawP.startsWith('- ') && colonIdx > 2) {
+      const rawTitle = sanitizeInlineField(rawP.substring(2, colonIdx)).toUpperCase();
+      const rawOfficerRight = rawP.substring(colonIdx + 3).trim();
+      const looksLikeOfficerRow =
+        rawTitle.length <= 18 &&
+        !/[.,;()]/.test(rawTitle) &&
+        !/^(BAHWA|MENURUT|BERDASARKAN|CATATAN|KETERANGAN|ACARA|KESIMPULAN)\b/.test(rawTitle) &&
+        rawOfficerRight.length > 0;
+
+      if (looksLikeOfficerRow) {
+        lines.push(...formatOfficerColumnLines(rawTitle, rawOfficerRight, maxChars, lineFmt));
+        continue;
+      }
+    }
+
+    const formatted = lineFmt(rawP, maxChars);
+    formatted.forEach(l => lines.push({ text: l, align: 'left', bold: false }));
   }
 
   return lines;
@@ -709,7 +703,7 @@ export function renderCustomTemplateSectionToLines(templateStr, data, sectionNum
   const lines = [];
   if (!templateStr) return lines;
   const map = buildPlaceholderMap(data, sectionNum, isPreview);
-  const rawParagraphs = templateStr.split('\n');
+  const rawParagraphs = sanitizeNotaryText(templateStr, { preserveNewlines: true }).split('\n');
 
   for (const rawTplLine of rawParagraphs) {
     if (!rawTplLine.trim()) continue;

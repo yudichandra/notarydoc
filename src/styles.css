@@ -1196,7 +1196,7 @@ label {
   min-width: 794px;
   max-width: 794px;
   box-sizing: border-box;
-  padding: 38px 37px 38px 246px; /* Top, Right: 0.39" (37px), Bottom, Left: 2.56" Renvoi (246px) */
+  padding: 38px 28px 38px 246px; /* Top, Right: ruang aman ~11px u/ 53 char, Bottom, Left: 2.56" Renvoi (246px) */
   border-radius: var(--rounded-sm);
   box-shadow: var(--product-shadow); /* rgba(0, 0, 0, 0.22) 3px 5px 30px */
   font-family: 'Courier New', Courier, monospace;
@@ -2278,6 +2278,7 @@ label {
 }
 
 .draft-card {
+  min-width: 0;
   background: var(--surface-pearl);
   border: 1px solid var(--hairline);
   border-radius: var(--rounded-md);
@@ -3159,6 +3160,10 @@ label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 700;
   color: #1e40af;
@@ -3352,7 +3357,7 @@ label {
 .preview-field-mark {
   background-color: #fde047;
   color: #0f172a;
-  padding: 0 1px;
+  padding: 0;
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.65);
 }
@@ -3451,12 +3456,16 @@ label {
   font-size: 11pt;
   line-height: 1.5;
   text-align: left;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .internal-doc-para {
   margin: 0 0 8px 0;
   padding: 2px 4px;
   border-radius: 3px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .internal-doc-para.preview-line-active-field {
@@ -3466,6 +3475,7 @@ label {
 
 .internal-doc-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin: 10px 0 14px 0;
   font-size: 10pt;
@@ -3475,6 +3485,9 @@ label {
 .internal-doc-table td {
   border: 1px solid #475569;
   padding: 6px 8px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  vertical-align: top;
 }
 
 .internal-doc-table th {

@@ -2,9 +2,34 @@
 
 const satuan = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
 
+export function parseNumericSafe(val) {
+  if (typeof val === 'number') {
+    return Number.isFinite(val) ? Math.floor(Math.abs(val)) : 0;
+  }
+  if (val === null || val === undefined) return 0;
+  const raw = String(val).trim();
+  if (!raw) return 0;
+  // Jika berupa angka polos / desimal standar JS
+  if (/^-?\d+(\.\d+)?$/.test(raw) && !/^\d{1,3}(\.\d{3})+$/.test(raw)) {
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.floor(Math.abs(n)) : 0;
+  }
+  // Tangani format rupiah/ribuan bertitik seperti "100.000.000" atau "Rp 50.000.000,-"
+  const beforeComma = raw.split(',')[0];
+  const digitsOnly = beforeComma.replace(/[^\d]/g, '');
+  if (!digitsOnly) return 0;
+  const parsed = Number(digitsOnly);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function terbilang(n) {
-  n = Math.floor(Math.abs(Number(n) || 0));
+  n = parseNumericSafe(n);
   if (n === 0) return 'nol';
+  if (n >= 1e15) {
+    const kuadriliun = Math.floor(n / 1e15);
+    const rem = n % 1e15;
+    return `${terbilang(kuadriliun)} kuadriliun${rem > 0 ? ' ' + terbilang(rem) : ''}`;
+  }
   if (n < 12) return satuan[n];
   if (n < 20) return terbilang(n - 10) + ' belas';
   if (n < 100) return terbilang(Math.floor(n / 10)) + ' puluh' + (n % 10 !== 0 ? ' ' + satuan[n % 10] : '');
@@ -23,14 +48,32 @@ const NAMA_BULAN = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+function parseDateSafe(dateInput) {
+  if (!dateInput) return null;
+  if (dateInput instanceof Date) {
+    return isNaN(dateInput.getTime()) ? null : dateInput;
+  }
+  if (typeof dateInput === 'string') {
+    const isoMatch = dateInput.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const y = parseInt(isoMatch[1], 10);
+      const m = parseInt(isoMatch[2], 10);
+      const d = parseInt(isoMatch[3], 10);
+      const dt = new Date(y, m - 1, d);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+  }
+  const dt = new Date(dateInput);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
 /**
  * Format tanggal akta notaris lengkap:
  * Contoh: "Selasa, tanggal lima belas bulan September tahun dua ribu dua puluh enam (15-09-2026)"
  */
 export function formatTanggalAkta(dateInput) {
-  if (!dateInput) return '';
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '';
+  const d = parseDateSafe(dateInput);
+  if (!d) return '';
 
   const hari = NAMA_HARI[d.getDay()];
   const tgl = d.getDate();
@@ -51,15 +94,8 @@ export function formatTanggalAkta(dateInput) {
  * Contoh: "dua belas bulan Agustus tahun dua ribu sepuluh (12-08-2010)"
  */
 export function formatTanggalBiasa(dateInput) {
-  if (!dateInput) return '';
-  let d;
-  if (typeof dateInput === 'string' && dateInput.includes('-')) {
-    const parts = dateInput.split('-');
-    d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-  } else {
-    d = new Date(dateInput);
-  }
-  if (isNaN(d.getTime())) return '';
+  const d = parseDateSafe(dateInput);
+  if (!d) return '';
 
   const tgl = d.getDate();
   const bln = NAMA_BULAN[d.getMonth()];
@@ -76,15 +112,8 @@ export function formatTanggalBiasa(dateInput) {
  * Contoh: "dua belas bulan Agustus tahun dua ribu sepuluh (12-08-2010)"
  */
 export function formatTanggalTanpaAwalan(dateInput) {
-  if (!dateInput) return '';
-  let d;
-  if (typeof dateInput === 'string' && dateInput.includes('-')) {
-    const parts = dateInput.split('-');
-    d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-  } else {
-    d = new Date(dateInput);
-  }
-  if (isNaN(d.getTime())) return '';
+  const d = parseDateSafe(dateInput);
+  if (!d) return '';
 
   const tgl = d.getDate();
   const bln = NAMA_BULAN[d.getMonth()];
@@ -102,9 +131,10 @@ export function formatTanggalTanpaAwalan(dateInput) {
  */
 export function formatJamAkta(timeStr) {
   if (!timeStr) return '';
-  const [jamStr, menitStr] = timeStr.split(':');
-  const jam = parseInt(jamStr, 10);
-  const menit = parseInt(menitStr || '0', 10);
+  const parts = String(timeStr).trim().split(/[:.]/);
+  const jam = parseInt(parts[0], 10);
+  const menit = parseInt(parts[1] || '0', 10);
+  if (isNaN(jam) || isNaN(menit)) return '';
 
   let terbilangWaktu = terbilang(jam);
   if (menit > 0) {
@@ -122,7 +152,7 @@ export function formatJamAkta(timeStr) {
  * Contoh: 293100 -> "293.100 (dua ratus sembilan puluh tiga ribu seratus) lembar"
  */
 export function formatSaham(jumlah) {
-  const num = parseInt(jumlah, 10) || 0;
+  const num = parseNumericSafe(jumlah);
   const numFormatted = num.toLocaleString('id-ID');
   return `${numFormatted} (${terbilang(num)}) lembar`;
 }
@@ -132,7 +162,7 @@ export function formatSaham(jumlah) {
  * Contoh: 100000000 -> "Rp 100.000.000,- (seratus juta rupiah)"
  */
 export function formatRupiah(amount) {
-  const num = parseInt(amount, 10) || 0;
+  const num = parseNumericSafe(amount);
   const numFormatted = num.toLocaleString('id-ID');
   return `Rp ${numFormatted},- (${terbilang(num)} rupiah)`;
 }
