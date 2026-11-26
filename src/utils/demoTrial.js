@@ -81,6 +81,16 @@ export function getDemoDurationLabel() {
   return '3 Hari';
 }
 
+function decodeStoredTimestamp(raw) {
+  if (!raw) return null;
+  try {
+    const num = parseInt(atob(raw), 10);
+    return Number.isFinite(num) ? num : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Inisialisasi dan jalankan sistem pengawasan demo/trial
  */
@@ -118,8 +128,8 @@ export function initDemoTrial() {
   let rawLast = localStorage.getItem(STORAGE_KEYS.LAST);
   let rawSig  = localStorage.getItem(STORAGE_KEYS.SIG);
 
-  let initTime = rawInit ? parseInt(atob(rawInit), 10) : null;
-  let lastTime = rawLast ? parseInt(atob(rawLast), 10) : null;
+  let initTime = decodeStoredTimestamp(rawInit);
+  let lastTime = decodeStoredTimestamp(rawLast);
 
   // Jika pertama kali dibuka di perangkat ini:
   if (!initTime || !lastTime || isNaN(initTime) || isNaN(lastTime)) {
@@ -189,8 +199,13 @@ function runPeriodicCheck(durationMs) {
     return;
   }
 
-  const initTime = parseInt(atob(rawInit), 10);
-  const lastTime = parseInt(atob(rawLast), 10);
+  const initTime = decodeStoredTimestamp(rawInit);
+  const lastTime = decodeStoredTimestamp(rawLast);
+  if (!initTime || !lastTime) {
+    lockTrialPermanently('tampered');
+    showDemoLockOverlay('tampered');
+    return;
+  }
 
   // Validasi signature
   if (rawSig !== computeSignature(initTime, lastTime)) {

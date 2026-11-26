@@ -60,6 +60,26 @@ export function formatAlphaIndex(idx) {
 }
 
 /**
+ * Memformat nama pemegang saham PT tanpa menduplikasi "perseroan terbatas"
+ * dan tanpa menempelkannya ke pemegang saham perorangan / CV / Firma.
+ */
+export function formatPtShareholderLabel(rawName, emptyFallback = 'perseroan terbatas ....................') {
+  const clean = sanitizeInlineField(rawName);
+  if (!clean) return emptyFallback;
+  if (/^perseroan\b/i.test(clean)) return clean;
+  if (/^pt(?:\.|\s|$)/i.test(clean)) return `perseroan terbatas ${clean}`;
+  return clean;
+}
+
+/**
+ * Menormalkan teks jam RUPS agar tidak menggandakan kata "pukul"
+ */
+export function formatRupsJamText(rawJam, fallback = '08.00 WIB') {
+  const clean = sanitizeInlineField(rawJam).replace(/^\s*pukul\s+/i, '').trim();
+  return clean || fallback;
+}
+
+/**
  * Memecah satu fragmen tanpa spasi yang melebihi batas karakter baris.
  */
 function sliceUnbreakableSegment(segment, maxLen) {

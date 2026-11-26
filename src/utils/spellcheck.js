@@ -1,4 +1,5 @@
 // Engine Pengecek Ejaan (Spell-check) & Deteksi Typo untuk Dokumen Notaris
+import { parseNumericSafe } from './terbilang.js';
 
 // Glosarium Kata Baku Hukum & Kenotariatan Indonesia
 const KAMUS_BAKU = new Set([
@@ -161,6 +162,21 @@ export function validasiDataAkta(data) {
     });
   }
 
+  // Validasi NIK Saksi 1 & Saksi 2 jika terisi
+  ['saksi1', 'saksi2'].forEach((key, idx) => {
+    const sk = data[key];
+    if (sk && sk.nik && sk.nik.trim()) {
+      const cleanNik = sk.nik.replace(/\D/g, '');
+      if (cleanNik.length !== 16) {
+        peringatan.push({
+          bidang: `${key}.nik`,
+          pesan: `NIK Saksi ${idx + 1} berjumlah ${cleanNik.length} digit (Standar NIK wajib 16 digit).`,
+          tipe: 'danger'
+        });
+      }
+    }
+  });
+
   // Validasi Modal / Saham Sesuai Jenis Badan Usaha
   const tipe = (data.badanUsaha && data.badanUsaha.tipe) || 'PT';
 
@@ -169,9 +185,9 @@ export function validasiDataAkta(data) {
     if (subTipe === 'SIRKULER_MODAL' || subTipe === 'RUPS_MODAL') {
       const pm = data.peningkatanModal;
       if (pm) {
-        const semulaNom = parseInt(pm.modalSemulaNominal, 10) || 0;
-        const keluarNom = parseInt(pm.sahamSimpananDikeluarkanNominal, 10) || 0;
-        const menjadiNom = parseInt(pm.modalMenjadiNominal, 10) || 0;
+        const semulaNom = parseNumericSafe(pm.modalSemulaNominal);
+        const keluarNom = parseNumericSafe(pm.sahamSimpananDikeluarkanNominal);
+        const menjadiNom = parseNumericSafe(pm.modalMenjadiNominal);
         if (semulaNom > 0 && keluarNom > 0 && menjadiNom > 0 && (semulaNom + keluarNom !== menjadiNom)) {
           peringatan.push({
             bidang: 'peningkatanModal.nominal',
@@ -180,9 +196,9 @@ export function validasiDataAkta(data) {
           });
         }
 
-        const semulaSaham = parseInt(pm.modalSemulaSaham, 10) || 0;
-        const keluarSaham = parseInt(pm.sahamSimpananDikeluarkanJml, 10) || 0;
-        const menjadiSaham = parseInt(pm.modalMenjadiSaham, 10) || 0;
+        const semulaSaham = parseNumericSafe(pm.modalSemulaSaham);
+        const keluarSaham = parseNumericSafe(pm.sahamSimpananDikeluarkanJml);
+        const menjadiSaham = parseNumericSafe(pm.modalMenjadiSaham);
         if (semulaSaham > 0 && keluarSaham > 0 && menjadiSaham > 0 && (semulaSaham + keluarSaham !== menjadiSaham)) {
           peringatan.push({
             bidang: 'peningkatanModal.saham',
@@ -193,8 +209,10 @@ export function validasiDataAkta(data) {
 
         if (Array.isArray(pm.pemegangSahamModal) && pm.pemegangSahamModal.length > 0 && menjadiSaham > 0) {
           let sumPsmSaham = 0;
+          let sumPsmNominal = 0;
           pm.pemegangSahamModal.forEach(psm => {
-            sumPsmSaham += parseInt(psm.jumlahSaham, 10) || 0;
+            sumPsmSaham += parseNumericSafe(psm.jumlahSaham);
+            sumPsmNominal += parseNumericSafe(psm.nominal);
           });
           if (sumPsmSaham > 0 && sumPsmSaham !== menjadiSaham) {
             peringatan.push({
@@ -203,20 +221,27 @@ export function validasiDataAkta(data) {
               tipe: 'danger'
             });
           }
+          if (sumPsmNominal > 0 && menjadiNom > 0 && sumPsmNominal !== menjadiNom) {
+            peringatan.push({
+              bidang: 'peningkatanModal.pemegangSahamModalNominal',
+              pesan: `Total Nominal Rincian Pemegang Saham Baru (Rp ${sumPsmNominal.toLocaleString('id-ID')}) TIDAK COCOK dengan Modal Menjadi (Rp ${menjadiNom.toLocaleString('id-ID')}). Selisih: Rp ${Math.abs(sumPsmNominal - menjadiNom).toLocaleString('id-ID')}!`,
+              tipe: 'danger'
+            });
+          }
         }
       }
     } else {
       // Validasi Saham PT Sirkuler Pengurus
       if (data.saham && Array.isArray(data.pemegangSaham)) {
-        const targetSeriA = parseInt(data.saham.totalSeriA, 10) || 0;
-        const targetSeriB = parseInt(data.saham.totalSeriB, 10) || 0;
+        const targetSeriA = parseNumericSafe(data.saham.totalSeriA);
+        const targetSeriB = parseNumericSafe(data.saham.totalSeriB);
 
         let sumSeriA = 0;
         let sumSeriB = 0;
 
         data.pemegangSaham.forEach(ps => {
-          sumSeriA += parseInt(ps.sahamSeriA, 10) || 0;
-          sumSeriB += parseInt(ps.sahamSeriB, 10) || 0;
+          sumSeriA += parseNumericSafe(ps.sahamSeriA);
+          sumSeriB += parseNumericSafe(ps.sahamSeriB);
         });
 
         if (targetSeriA > 0 && sumSeriA !== targetSeriA) {
@@ -239,11 +264,11 @@ export function validasiDataAkta(data) {
   } else if (tipe === 'CV' || tipe === 'FIRMA') {
     // Validasi Modal Inbreng CV / Firma
     if (data.modal && Array.isArray(data.sekutu)) {
-      const totalModal = parseInt(data.modal.totalNominal, 10) || 0;
+      const totalModal = parseNumericSafe(data.modal.totalNominal);
       let sumInbreng = 0;
 
       data.sekutu.forEach(sk => {
-        sumInbreng += parseInt(sk.nominalInbreng, 10) || 0;
+        sumInbreng += parseNumericSafe(sk.nominalInbreng);
       });
 
       if (totalModal > 0 && sumInbreng !== totalModal) {

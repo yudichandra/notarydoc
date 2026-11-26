@@ -761,6 +761,8 @@ function escapeHtml(str) {
  * Modern Custom Modal Dialog (menggantikan alert & confirm bawaan webview)
  * Fitur: Pop-up di tengah layar, background belakang blur (frosted), kartu modern, ikon status, detail data.
  */
+let activeAppDialogCleanup = null;
+
 function showAppDialog({
   type = 'info',
   title = 'Pemberitahuan',
@@ -771,6 +773,10 @@ function showAppDialog({
   showCancel = false,
   cancelText = 'Batal'
 }) {
+  if (typeof activeAppDialogCleanup === 'function') {
+    activeAppDialogCleanup();
+    activeAppDialogCleanup = null;
+  }
   return new Promise((resolve) => {
     const overlay = document.getElementById('appModalOverlay');
     const iconBadge = document.getElementById('appModalIcon');
@@ -788,50 +794,58 @@ function showAppDialog({
     }
 
     // Set Icon Badge
-    iconBadge.className = `app-modal-icon-badge ${type}`;
-    if (type === 'success') {
-      iconBadge.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-    } else if (type === 'error') {
-      iconBadge.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
-    } else if (type === 'warning') {
-      iconBadge.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
-    } else {
-      iconBadge.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+    if (iconBadge) {
+      iconBadge.className = `app-modal-icon-badge ${type}`;
+      if (type === 'success') {
+        iconBadge.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+      } else if (type === 'error') {
+        iconBadge.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+      } else if (type === 'warning') {
+        iconBadge.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+      } else {
+        iconBadge.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+      }
     }
 
     // Set Title & Message
-    titleEl.textContent = title;
-    msgEl.textContent = message;
-    msgEl.style.display = message ? 'block' : 'none';
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) {
+      msgEl.textContent = message;
+      msgEl.style.display = message ? 'block' : 'none';
+    }
 
     // Set Structured Details
-    if (details && (typeof details === 'object' || Array.isArray(details))) {
-      detailsEl.style.display = 'flex';
-      let html = '';
-      if (Array.isArray(details)) {
-        html = details.map(d => `<div class="modal-detail-row"><span class="modal-detail-val">${escapeHtml(d)}</span></div>`).join('');
+    if (detailsEl) {
+      if (details && (typeof details === 'object' || Array.isArray(details))) {
+        detailsEl.style.display = 'flex';
+        let html = '';
+        if (Array.isArray(details)) {
+          html = details.map(d => `<div class="modal-detail-row"><span class="modal-detail-val">${escapeHtml(d)}</span></div>`).join('');
+        } else {
+          html = Object.entries(details).map(([k, v]) => `
+            <div class="modal-detail-row">
+              <span class="modal-detail-label">${escapeHtml(k)}</span>
+              <span class="modal-detail-val">${escapeHtml(v)}</span>
+            </div>
+          `).join('');
+        }
+        detailsEl.innerHTML = html;
+      } else if (typeof details === 'string' && details.trim()) {
+        detailsEl.style.display = 'flex';
+        detailsEl.innerHTML = `<div class="modal-detail-row"><span class="modal-detail-val">${escapeHtml(details)}</span></div>`;
       } else {
-        html = Object.entries(details).map(([k, v]) => `
-          <div class="modal-detail-row">
-            <span class="modal-detail-label">${escapeHtml(k)}</span>
-            <span class="modal-detail-val">${escapeHtml(v)}</span>
-          </div>
-        `).join('');
+        detailsEl.style.display = 'none';
+        detailsEl.innerHTML = '';
       }
-      detailsEl.innerHTML = html;
-    } else if (typeof details === 'string' && details.trim()) {
-      detailsEl.style.display = 'flex';
-      detailsEl.innerHTML = `<div class="modal-detail-row"><span class="modal-detail-val">${escapeHtml(details)}</span></div>`;
-    } else {
-      detailsEl.style.display = 'none';
-      detailsEl.innerHTML = '';
     }
 
     // Set Buttons
     btnConfirm.textContent = confirmText;
     btnConfirm.className = `btn-modal-confirm ${confirmType === 'danger' ? 'danger' : ''}`;
-    btnCancel.style.display = showCancel ? 'inline-block' : 'none';
-    btnCancel.textContent = cancelText;
+    if (btnCancel) {
+      btnCancel.style.display = showCancel ? 'inline-block' : 'none';
+      btnCancel.textContent = cancelText;
+    }
 
     // Show Overlay
     overlay.style.display = 'flex';
@@ -841,9 +855,11 @@ function showAppDialog({
       overlay.style.display = 'none';
       document.removeEventListener('keydown', keyHandler);
       btnConfirm.onclick = null;
-      btnCancel.onclick = null;
+      if (btnCancel) btnCancel.onclick = null;
       if (backdrop) backdrop.onclick = null;
+      activeAppDialogCleanup = null;
     };
+    activeAppDialogCleanup = cleanup;
 
     const handleConfirm = () => {
       cleanup();
@@ -867,7 +883,7 @@ function showAppDialog({
     };
 
     btnConfirm.onclick = handleConfirm;
-    btnCancel.onclick = handleCancel;
+    if (btnCancel) btnCancel.onclick = handleCancel;
     if (backdrop) {
       backdrop.onclick = () => {
         if (showCancel) handleCancel();
@@ -957,6 +973,9 @@ function resetFormFields(keepNotaris = true) {
     if (defGelarS && document.getElementById('notarisGelarSingkat')) document.getElementById('notarisGelarSingkat').value = defGelarS;
   }
   applyNotaryNameLock();
+  document.querySelectorAll('.terbilang-preview, .validation-msg').forEach(el => {
+    el.textContent = '';
+  });
   state.customTemplates = {};
   updateCustomClauseBadges();
   checkOverallConsistency();
@@ -965,6 +984,8 @@ function resetFormFields(keepNotaris = true) {
 
 function switchView(viewName) {
   applyNotaryNameLock();
+  const dropdownMenu = document.getElementById('clauseDropdownMenu');
+  if (dropdownMenu) dropdownMenu.style.display = 'none';
   const vDash = document.getElementById('view-dashboard');
   const vEdit = document.getElementById('view-editor');
   const vSett = document.getElementById('view-settings');
@@ -1028,6 +1049,12 @@ function resetSplitPreviewState() {
   state.activeFieldLabel = null;
   state.previewMode = 'deed';
   state.isPreviewExpanded = false;
+  const modeSwitcher = document.getElementById('previewDocModeSwitcher');
+  if (modeSwitcher) {
+    modeSwitcher.querySelectorAll('.preview-mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === 'deed');
+    });
+  }
   const viewEditor = document.getElementById('view-editor');
   if (viewEditor) viewEditor.classList.remove('preview-expanded');
   const btnExpand = document.getElementById('btnToggleExpandPreview');
@@ -1091,7 +1118,7 @@ async function openDraftFromPath(filePath, options = {}) {
       jsonContent = await window.__TAURI__.core.invoke('read_text_file', { filePath });
     }
     if (!jsonContent) throw new Error('Berkas kosong atau tidak dapat diakses.');
-    const parsed = JSON.parse(jsonContent);
+    const parsed = JSON.parse(jsonContent.replace(/^\uFEFF/, ''));
     await loadDraftFromParsedData(parsed, {
       activePath: filePath,
       showSuccessDialog: Boolean(options.showSuccessDialog)
@@ -1138,7 +1165,8 @@ function bindWebDraftFileInput(inputEl, { showSuccessDialog = false } = {}) {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const parsed = JSON.parse(event.target.result);
+        const rawText = typeof event.target?.result === 'string' ? event.target.result : '';
+        const parsed = JSON.parse(rawText.replace(/^\uFEFF/, ''));
         await loadDraftFromParsedData(parsed, {
           activePath: null,
           displayName: file.name,
@@ -1591,7 +1619,7 @@ function setupDashboard() {
   const btnDashOpenDir = document.getElementById('btnDashboardOpenDir');
   if (btnDashOpenDir) {
     btnDashOpenDir.addEventListener('click', async () => {
-      let p = localStorage.getItem('setting_dir_progress') || '';
+      let p = getDefaultDownloadsDir();
       if (!p) {
         const ok = await showAppDialog({
           type: 'info',
@@ -1947,7 +1975,7 @@ function setupTabNavigation() {
 // Setup Live Preview Terbilang
 function setupLiveTerbilangListeners() {
   const bindings = [
-    { input: 'aktaNomor', preview: 'terbilangAktaNomor', fn: v => v ? `Terbilang: Nomor ${terbilang(v)}` : '' },
+    { input: 'aktaNomor', preview: 'terbilangAktaNomor', fn: v => /^\s*\d+\s*$/.test(v || '') ? `Terbilang: Nomor ${terbilang(v)}` : '' },
     { input: 'aktaTanggal', preview: 'terbilangAktaTanggal', fn: v => formatTanggalAkta(v) },
     { input: 'aktaJam', preview: 'terbilangAktaJam', fn: v => formatJamAkta(v) },
     { input: 'ptAktaPendirianTgl', preview: 'terbilangPtAktaPendirianTgl', fn: v => formatTanggalBiasa(v) },
@@ -2013,7 +2041,7 @@ function checkOverallConsistency() {
       warningBanner.classList.remove('hidden');
       let html = '';
       warnings.forEach(w => {
-        html += `<div>• <b>${w.pesan}</b></div>`;
+        html += `<div>• <b>${escapeHtml(w.pesan)}</b></div>`;
       });
       warningList.innerHTML = html;
     }
@@ -2086,25 +2114,25 @@ function tambahBarisPemegangSaham(data = null) {
     <div class="grid grid-2">
       <div class="form-group">
         <label>Nama Pemegang Saham / Yang Mewakili</label>
-        <input type="text" class="form-input ps-nama spell-check" value="${item.nama}" placeholder="Contoh: Tuan. BINTANG BULAN" required />
+        <input type="text" class="form-input ps-nama spell-check" value="${escapeHtml(item.nama || '')}" placeholder="Contoh: Tuan. BINTANG BULAN" required />
       </div>
       <div class="form-group">
         <label>Kapasitas / Selaku Perusahaan</label>
-        <input type="text" class="form-input ps-selaku spell-check" value="${item.selaku}" placeholder="Contoh: Direktur PT. ANUGERAH LANCAR JAYA" />
+        <input type="text" class="form-input ps-selaku spell-check" value="${escapeHtml(item.selaku || '')}" placeholder="Contoh: Direktur PT. ANUGERAH LANCAR JAYA" />
       </div>
     </div>
     <div class="grid grid-3 mt-3">
       <div class="form-group">
         <label>Jumlah Saham Seri-A (Lembar)</label>
-        <input type="number" class="form-input ps-saham-a" value="${item.sahamSeriA}" />
+        <input type="number" class="form-input ps-saham-a" value="${Number(item.sahamSeriA) || 0}" />
       </div>
       <div class="form-group">
         <label>Jumlah Saham Seri-B (Lembar)</label>
-        <input type="number" class="form-input ps-saham-b" value="${item.sahamSeriB}" />
+        <input type="number" class="form-input ps-saham-b" value="${Number(item.sahamSeriB) || 0}" />
       </div>
       <div class="form-group">
         <label>Tanggal TTD Sirkuler</label>
-        <input type="text" class="form-input ps-tgl" value="${item.tanggalTtd}" placeholder="10 September 2026" />
+        <input type="text" class="form-input ps-tgl" value="${escapeHtml(item.tanggalTtd || '')}" placeholder="10 September 2026" />
       </div>
     </div>
   `;
@@ -2136,21 +2164,21 @@ function tambahBarisPemegangSahamModal(data = null) {
     <div class="grid grid-2">
       <div class="form-group">
         <label>Nama Pemegang Saham / Perusahaan <span class="req">*</span></label>
-        <input type="text" class="form-input psm-nama spell-check" value="${item.nama || ''}" placeholder="Contoh: PT. JAYA ABADI SELALU" required />
+        <input type="text" class="form-input psm-nama spell-check" value="${escapeHtml(item.nama || '')}" placeholder="Contoh: PT. JAYA ABADI SELALU" required />
       </div>
       <div class="form-group">
         <label>Persentase Kepemilikan (%)</label>
-        <input type="text" class="form-input psm-persen" value="${item.persentase || ''}" placeholder="Contoh: 99,999%" />
+        <input type="text" class="form-input psm-persen" value="${escapeHtml(item.persentase || '')}" placeholder="Contoh: 99,999%" />
       </div>
     </div>
     <div class="grid grid-2 mt-3">
       <div class="form-group">
         <label>Jumlah Saham (Lembar) <span class="req">*</span></label>
-        <input type="number" class="form-input psm-saham" value="${item.jumlahSaham || 0}" placeholder="962505" />
+        <input type="number" class="form-input psm-saham" value="${Number(item.jumlahSaham) || 0}" placeholder="962505" />
       </div>
       <div class="form-group">
         <label>Nilai Nominal Saham (Rp) <span class="req">*</span></label>
-        <input type="number" class="form-input psm-nominal" value="${item.nominal || 0}" placeholder="962505000000" />
+        <input type="number" class="form-input psm-nominal" value="${Number(item.nominal) || 0}" placeholder="962505000000" />
       </div>
     </div>
   `;
@@ -2192,25 +2220,25 @@ function tambahBarisSekutu(data = null) {
     <div class="grid grid-2">
       <div class="form-group">
         <label>Nama Lengkap Pesero / Pemilik</label>
-        <input type="text" class="form-input sk-nama spell-check" value="${item.nama}" placeholder="Contoh: Tuan. H. AHMAD FAUZI" required />
+        <input type="text" class="form-input sk-nama spell-check" value="${escapeHtml(item.nama || '')}" placeholder="Contoh: Tuan. H. AHMAD FAUZI" required />
       </div>
       <div class="form-group">
         <label>${labelStatus}</label>
-        <input type="text" class="form-input sk-status spell-check" value="${item.statusSekutu}" placeholder="Contoh: Persero Pengurus / Pemilik" />
+        <input type="text" class="form-input sk-status spell-check" value="${escapeHtml(item.statusSekutu || '')}" placeholder="Contoh: Persero Pengurus / Pemilik" />
       </div>
     </div>
     <div class="grid grid-3 mt-3">
       <div class="form-group">
         <label>Nominal Modal Inbreng (Rp)</label>
-        <input type="number" class="form-input sk-nominal" value="${item.nominalInbreng}" placeholder="Contoh: 250000000" />
+        <input type="number" class="form-input sk-nominal" value="${Number(item.nominalInbreng) || 0}" placeholder="Contoh: 250000000" />
       </div>
       <div class="form-group">
         <label>Porsi / Persentase Modal (%)</label>
-        <input type="text" class="form-input sk-persen" value="${item.persentase}" placeholder="Contoh: 50" />
+        <input type="text" class="form-input sk-persen" value="${escapeHtml(item.persentase ?? '50')}" placeholder="Contoh: 50" />
       </div>
       <div class="form-group">
         <label>Tanggal Tanda Tangan</label>
-        <input type="text" class="form-input sk-tgl" value="${item.tanggalTtd}" placeholder="15 Oktober 2026" />
+        <input type="text" class="form-input sk-tgl" value="${escapeHtml(item.tanggalTtd || '')}" placeholder="15 Oktober 2026" />
       </div>
     </div>
   `;
@@ -2241,33 +2269,47 @@ function tambahBarisPengurus(data = null) {
     alamat: ''
   };
 
-  // Jabatan options adapted to entity
+  // Jabatan options adapted to entity (tahan nilai kustom maupun null/lowercase)
+  const rawJabatan = String(item.jabatan || defaultJabatan).trim() || defaultJabatan;
+  const rawJabatanLower = rawJabatan.toLowerCase();
+  const buildSelectOptions = (presetList) => {
+    const matched = presetList.some(p => p.match(rawJabatanLower));
+    const html = presetList.map(p =>
+      `<option value="${escapeHtml(p.value)}" ${p.match(rawJabatanLower) ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+    ).join('\n      ');
+    if (!matched && rawJabatan) {
+      return `${html}\n      <option value="${escapeHtml(rawJabatan)}" selected>${escapeHtml(rawJabatan)}</option>`;
+    }
+    return html;
+  };
+
   let jabatanOptions = '';
   if (state.entityType === 'PT') {
-    jabatanOptions = `
-      <option value="Direktur Utama" ${item.jabatan === 'Direktur Utama' ? 'selected' : ''}>Direktur Utama</option>
-      <option value="Direktur" ${item.jabatan === 'Direktur' ? 'selected' : ''}>Direktur</option>
-      <option value="Komisaris Utama" ${item.jabatan === 'Komisaris Utama' ? 'selected' : ''}>Komisaris Utama</option>
-      <option value="Komisaris" ${item.jabatan === 'Komisaris' ? 'selected' : ''}>Komisaris</option>
-    `;
+    jabatanOptions = buildSelectOptions([
+      { value: 'Direktur Utama', label: 'Direktur Utama', match: s => s === 'direktur utama' },
+      { value: 'Direktur', label: 'Direktur', match: s => s === 'direktur' },
+      { value: 'Komisaris Utama', label: 'Komisaris Utama', match: s => s === 'komisaris utama' },
+      { value: 'Komisaris', label: 'Komisaris', match: s => s === 'komisaris' }
+    ]);
   } else if (state.entityType === 'CV') {
-    jabatanOptions = `
-      <option value="Persero Pengurus (Direktur)" ${item.jabatan.includes('Pengurus') ? 'selected' : ''}>Persero Pengurus (Direktur)</option>
-      <option value="Persero Komanditer" ${item.jabatan.includes('Komanditer') ? 'selected' : ''}>Persero Komanditer (Sekutu Diam)</option>
-    `;
+    jabatanOptions = buildSelectOptions([
+      { value: 'Persero Pengurus (Direktur)', label: 'Persero Pengurus (Direktur)', match: s => s.includes('pengurus') },
+      { value: 'Persero Komanditer', label: 'Persero Komanditer (Sekutu Diam)', match: s => s.includes('komanditer') }
+    ]);
   } else if (state.entityType === 'FIRMA') {
-    jabatanOptions = `
-      <option value="Pesero Pengurus" ${item.jabatan.includes('Pengurus') ? 'selected' : ''}>Pesero Pengurus</option>
-      <option value="Pesero Firma" ${item.jabatan.includes('Firma') ? 'selected' : ''}>Pesero Firma</option>
-    `;
+    jabatanOptions = buildSelectOptions([
+      { value: 'Pesero Pengurus', label: 'Pesero Pengurus', match: s => s.includes('pengurus') },
+      { value: 'Pesero Firma', label: 'Pesero Firma', match: s => s.includes('firma') }
+    ]);
   } else {
-    jabatanOptions = `
-      <option value="Pemilik Usaha" ${item.jabatan.includes('Pemilik') ? 'selected' : ''}>Pemilik Usaha</option>
-      <option value="Kuasa Pengelola Usaha" ${item.jabatan.includes('Kuasa') ? 'selected' : ''}>Kuasa Pengelola Usaha</option>
-      <option value="Penanggung Jawab Operasional" ${item.jabatan.includes('Penanggung') ? 'selected' : ''}>Penanggung Jawab Operasional</option>
-    `;
+    jabatanOptions = buildSelectOptions([
+      { value: 'Pemilik Usaha', label: 'Pemilik Usaha', match: s => s.includes('pemilik') },
+      { value: 'Kuasa Pengelola Usaha', label: 'Kuasa Pengelola Usaha', match: s => s.includes('kuasa') },
+      { value: 'Penanggung Jawab Operasional', label: 'Penanggung Jawab Operasional', match: s => s.includes('penanggung') }
+    ]);
   }
 
+  const rawSapaan = String(item.sapaan || 'Tuan');
   const div = document.createElement('div');
   div.className = 'dynamic-row-card';
   div.id = `row-pg-${id}`;
@@ -2286,33 +2328,43 @@ function tambahBarisPengurus(data = null) {
       <div class="form-group">
         <label>Sapaan</label>
         <select class="form-input pg-sapaan">
-          <option value="Tuan" ${item.sapaan === 'Tuan' ? 'selected' : ''}>Tuan</option>
-          <option value="Nyonya" ${item.sapaan === 'Nyonya' ? 'selected' : ''}>Nyonya</option>
-          <option value="Nona" ${item.sapaan === 'Nona' ? 'selected' : ''}>Nona</option>
+          <option value="Tuan" ${rawSapaan === 'Tuan' ? 'selected' : ''}>Tuan</option>
+          <option value="Nyonya" ${rawSapaan === 'Nyonya' ? 'selected' : ''}>Nyonya</option>
+          <option value="Nona" ${rawSapaan === 'Nona' ? 'selected' : ''}>Nona</option>
         </select>
       </div>
       <div class="form-group">
         <label>Nama Lengkap</label>
-        <input type="text" class="form-input pg-nama spell-check" value="${item.nama}" placeholder="PANGERAN KELINCI" required />
+        <input type="text" class="form-input pg-nama spell-check" value="${escapeHtml(item.nama || '')}" placeholder="PANGERAN KELINCI" required />
       </div>
     </div>
     <div class="grid grid-3 mt-3">
       <div class="form-group">
         <label>Tempat Lahir</label>
-        <input type="text" class="form-input pg-tempat-lahir" value="${item.tempatLahir}" placeholder="Semarang" />
+        <input type="text" class="form-input pg-tempat-lahir" value="${escapeHtml(item.tempatLahir || '')}" placeholder="Semarang" />
       </div>
       <div class="form-group">
         <label>Tanggal Lahir</label>
-        <input type="date" class="form-input pg-tgl-lahir" value="${item.tanggalLahir}" />
+        <input type="date" class="form-input pg-tgl-lahir" value="${escapeHtml(item.tanggalLahir || '')}" />
       </div>
       <div class="form-group">
         <label>NIK KTP (16 Digit)</label>
-        <input type="text" class="form-input pg-nik" maxlength="16" value="${item.nik}" placeholder="3333399900000111" required />
+        <input type="text" class="form-input pg-nik" maxlength="16" value="${escapeHtml(item.nik || '')}" placeholder="3333399900000111" required />
+      </div>
+    </div>
+    <div class="grid grid-2 mt-3">
+      <div class="form-group">
+        <label>Pekerjaan</label>
+        <input type="text" class="form-input pg-pekerjaan" value="${escapeHtml(item.pekerjaan || 'Karyawan Swasta')}" placeholder="Karyawan Swasta" />
+      </div>
+      <div class="form-group">
+        <label>Kewarganegaraan</label>
+        <input type="text" class="form-input pg-wn" value="${escapeHtml(item.kewarganegaraan || 'Indonesia')}" placeholder="Indonesia" />
       </div>
     </div>
     <div class="form-group mt-3">
       <label>Alamat Lengkap KTP</label>
-      <textarea class="form-input pg-alamat" rows="2" placeholder="Jalan Sutera Delima I No. 23, RT 003, RW 010...">${item.alamat}</textarea>
+      <textarea class="form-input pg-alamat" rows="2" placeholder="Jalan Sutera Delima I No. 23, RT 003, RW 010...">${escapeHtml(item.alamat || '')}</textarea>
     </div>
   `;
 
@@ -2393,7 +2445,7 @@ function setupActionButtons() {
       resetFormFields(true);
       resetSplitPreviewState();
       const clauseMenu = document.getElementById('clauseDropdownMenu');
-      if (clauseMenu) clauseMenu.classList.remove('open');
+      if (clauseMenu) clauseMenu.style.display = 'none';
       updateActiveDraftUI(null);
       setDraftSavedStatus(false);
       renderLivePreview();
@@ -2467,7 +2519,7 @@ function setupActionButtons() {
       btn.disabled = true;
       btn.innerHTML = `Sedang Memproses...`;
       const res = await generateAktaWord(data);
-      const filename = chosenPath ? chosenPath.split(/[\\/]/).pop() : (res.filename || defaultWordFilename);
+      const filename = (chosenPath ? chosenPath.split(/[\\/]/).filter(Boolean).pop() : '') || res.filename || defaultWordFilename;
       const blob = res.blob;
 
       if (window.__TAURI__?.core?.invoke && blob && chosenPath) {
@@ -2491,7 +2543,8 @@ function setupActionButtons() {
         saveAs(blob, filename);
       }
 
-      const folderOnly = chosenPath ? chosenPath.substring(0, chosenPath.length - filename.length - 1) : '';
+      const lastSepIdx = chosenPath ? Math.max(chosenPath.lastIndexOf('\\'), chosenPath.lastIndexOf('/')) : -1;
+      const folderOnly = lastSepIdx > 0 ? chosenPath.substring(0, lastSepIdx) : '';
       await showAppDialog({
         type: 'success',
         title: 'Dokumen Word Berhasil Dibuat!',
@@ -2696,11 +2749,9 @@ function setupActionButtons() {
 // Muat Data ke Form
 function loadDataToForm(data) {
   const tipe = (data.badanUsaha && data.badanUsaha.tipe) || 'PT';
-  const subTipe = data.subTipe || (tipe === 'PT' ? (data.rups?.tanggal ? 'RUPS_MODAL' : (data.peningkatanModal?.modalMenjadiNominal ? 'SIRKULER_MODAL' : 'SIRKULER_PENGURUS')) : null);
-  if (subTipe) {
-    state.ptSubType = subTipe;
-  }
-  switchEntityType(tipe, false, subTipe);
+  const subTipe = data.subTipe || data.badanUsaha?.subTipe || (tipe === 'PT' ? (data.rups?.tanggal ? 'RUPS_MODAL' : (data.peningkatanModal?.modalMenjadiNominal ? 'SIRKULER_MODAL' : 'SIRKULER_PENGURUS')) : null);
+  state.ptSubType = tipe === 'PT' ? (subTipe || 'SIRKULER_PENGURUS') : 'SIRKULER_PENGURUS';
+  switchEntityType(tipe, false, tipe === 'PT' ? state.ptSubType : null);
 
   // Muat template klausula khusus jika tersimpan dalam draf
   state.customTemplates = (data.customTemplates && typeof data.customTemplates === 'object')
@@ -2775,15 +2826,23 @@ function loadDataToForm(data) {
   document.getElementById('tglEfektif').value = data.keputusan?.tglEfektif || '';
 
   // Saksi
+  const sk1NamaEl = document.getElementById('saksi1Nama');
   document.getElementById('saksi1Sapaan').value = data.saksi1?.sapaan || 'Nona';
-  document.getElementById('saksi1Nama').value = data.saksi1?.nama || '';
+  if (sk1NamaEl) {
+    sk1NamaEl.value = data.saksi1?.nama || '';
+    sk1NamaEl.dataset.pekerjaan = data.saksi1?.pekerjaan || 'Karyawan Swasta';
+  }
   document.getElementById('saksi1TempatLahir').value = data.saksi1?.tempatLahir || '';
   document.getElementById('saksi1TanggalLahir').value = data.saksi1?.tanggalLahir || '';
   document.getElementById('saksi1Nik').value = data.saksi1?.nik || '';
   document.getElementById('saksi1Alamat').value = data.saksi1?.alamat || '';
 
+  const sk2NamaEl = document.getElementById('saksi2Nama');
   document.getElementById('saksi2Sapaan').value = data.saksi2?.sapaan || 'Nona';
-  document.getElementById('saksi2Nama').value = data.saksi2?.nama || '';
+  if (sk2NamaEl) {
+    sk2NamaEl.value = data.saksi2?.nama || '';
+    sk2NamaEl.dataset.pekerjaan = data.saksi2?.pekerjaan || 'Karyawan Swasta';
+  }
   document.getElementById('saksi2TempatLahir').value = data.saksi2?.tempatLahir || '';
   document.getElementById('saksi2TanggalLahir').value = data.saksi2?.tanggalLahir || '';
   document.getElementById('saksi2Nik').value = data.saksi2?.nik || '';
@@ -2922,8 +2981,8 @@ function kumpulkanDataForm() {
       nama: row.querySelector('.pg-nama')?.value || '',
       tempatLahir: row.querySelector('.pg-tempat-lahir')?.value || '',
       tanggalLahir: row.querySelector('.pg-tgl-lahir')?.value || '',
-      kewarganegaraan: 'Indonesia',
-      pekerjaan: 'Karyawan Swasta',
+      kewarganegaraan: row.querySelector('.pg-wn')?.value || 'Indonesia',
+      pekerjaan: row.querySelector('.pg-pekerjaan')?.value || 'Karyawan Swasta',
       nik: row.querySelector('.pg-nik')?.value || '',
       alamat: row.querySelector('.pg-alamat')?.value || ''
     });
@@ -3021,7 +3080,7 @@ function kumpulkanDataForm() {
       tempatLahir: document.getElementById('saksi1TempatLahir')?.value || '',
       tanggalLahir: document.getElementById('saksi1TanggalLahir')?.value || '',
       nik: document.getElementById('saksi1Nik')?.value || '',
-      pekerjaan: 'Karyawan Swasta',
+      pekerjaan: document.getElementById('saksi1Nama')?.dataset?.pekerjaan || 'Karyawan Swasta',
       alamat: document.getElementById('saksi1Alamat')?.value || ''
     },
     saksi2: {
@@ -3030,7 +3089,7 @@ function kumpulkanDataForm() {
       tempatLahir: document.getElementById('saksi2TempatLahir')?.value || '',
       tanggalLahir: document.getElementById('saksi2TanggalLahir')?.value || '',
       nik: document.getElementById('saksi2Nik')?.value || '',
-      pekerjaan: 'Karyawan Swasta',
+      pekerjaan: document.getElementById('saksi2Nama')?.dataset?.pekerjaan || 'Karyawan Swasta',
       alamat: document.getElementById('saksi2Alamat')?.value || ''
     },
     customTemplates: { ...(state.customTemplates || {}) },
@@ -3378,9 +3437,9 @@ function renderLivePreview({ scrollToFirstMatch = false } = {}) {
       </tr>
     `).join('');
 
-    const ttdSignHtml = (m.isRups ? renderInternalPara(m.pimpinanText, { bold: true, underline: true, fieldKeys: ['penghadapNama', 'penghadapSapaan'], sectionNum: 5 }) + renderInternalPara('Pimpinan Rapat', { sectionNum: 5 }) : '') +
+    const ttdSignHtml = (m.isRups ? renderInternalPara(m.pimpinanText, { bold: true, underline: true, fieldKeys: ['penghadapNama', 'penghadapSapaan', 'rupsPimpinan'], sectionNum: 5 }) + renderInternalPara('Pimpinan Rapat', { sectionNum: 5 }) : '') +
       m.ttdSignatories.map(ps =>
-        renderInternalPara(`( ${ps.nama} )`, { bold: true, underline: true, fieldKeys: ['pemegangSaham', 'pemegangSahamModal'], sectionNum: 5 }) +
+        renderInternalPara(`( ${(ps.nama || '').trim() || '....................'} )`, { bold: true, underline: true, fieldKeys: ['pemegangSaham', 'pemegangSahamModal'], sectionNum: 5 }) +
         renderInternalPara(ps.selaku || 'Pemegang Saham', { fieldKeys: ['pemegangSaham', 'pemegangSahamModal'], sectionNum: 5 })
       ).join('');
 
@@ -4067,8 +4126,9 @@ function setupProgressSaveAndLoad() {
     localStorage.setItem('akta_autosave_draft_data', jsonStr);
     setDraftSavedStatus(true);
 
-    const filenameOnly = chosenPath.split(/[\\/]/).pop();
-    const folderOnly = chosenPath.substring(0, chosenPath.length - filenameOnly.length - 1);
+    const filenameOnly = chosenPath.split(/[\\/]/).filter(Boolean).pop() || chosenPath;
+    const lastDirSep = Math.max(chosenPath.lastIndexOf('\\'), chosenPath.lastIndexOf('/'));
+    const folderOnly = lastDirSep > 0 ? chosenPath.substring(0, lastDirSep) : '';
 
     if (forceSaveAs) {
       await showAppDialog({
@@ -4115,7 +4175,11 @@ function setupProgressSaveAndLoad() {
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
       const editorView = document.getElementById('view-editor');
-      if (editorView && editorView.style.display !== 'none') {
+      const clauseModal = document.getElementById('clauseModalOverlay');
+      const appModal = document.getElementById('appModalOverlay');
+      const modalOpen = (clauseModal && clauseModal.style.display !== 'none') ||
+        (appModal && appModal.style.display !== 'none');
+      if (editorView && editorView.style.display !== 'none' && !modalOpen && !isDemoLocked()) {
         e.preventDefault();
         saveDraft(false);
       }

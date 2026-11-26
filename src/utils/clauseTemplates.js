@@ -8,7 +8,9 @@ import {
   formatDashedCenterHeading,
   formatOfficerColumnLines,
   sanitizeInlineField,
-  sanitizeNotaryText
+  sanitizeNotaryText,
+  formatPtShareholderLabel,
+  formatRupsJamText
 } from './notaryLineFormatter.js';
 
 export const SECTION_NAMES = {
@@ -285,7 +287,7 @@ Nomor : {NOMOR_AKTA} .-
 - Bahwa pada hari {HARI_TANGGAL_RUPS}, pukul {JAM_RUPS}, dengan mengambil tempat di {TEMPAT_RUPS}, telah diadakan Rapat Umum Pemegang Saham (RUPS) Luar Biasa perseroan terbatas “{NAMA_ENTITAS}”, berkedudukan di {KEDUDUKAN_ENTITAS};
 - Bahwa dalam rapat tersebut telah hadir dan/atau diwakili sejumlah {TOTAL_SAHAM_HADIR_RUPS} lembar saham atau merupakan keseluruhan saham yang telah dikeluarkan oleh Perseroan;
 - Bahwa surat-surat saham yang diwakili sampai sekarang belum dicetak, namun demikian penghadap menjamin keadaannya baik jumlah dan kepemilikan saham sesuai dengan keadaan yang sebenarnya;
-- Bahwa dalam rapat tersebut penghadap {SAPAAN_PENGHADAP}. {NAMA_PENGHADAP} bertindak selaku Pimpinan Rapat;
+- Bahwa dalam rapat tersebut {PIMPINAN_RUPS} bertindak selaku Pimpinan Rapat;
 - Bahwa hal-hal yang dibicarakan serta diputuskan dalam rapat tersebut telah dibuatkan Berita Acara Rapat di bawah tangan bermeterai cukup dan dilekatkan pada minuta akta ini;
 - Bahwa berdasarkan kuasa yang diberikan dalam Rapat tersebut, penghadap diberi hak dan wewenang untuk menyatakan keputusan rapat dalam suatu akta Notaris;
 - Berdasarkan apa yang diuraikan diatas, penghadap menyatakan Rapat Umum Pemegang Saham Luar Biasa dengan suara bulat telah memutuskan:
@@ -580,9 +582,9 @@ export function buildPlaceholderMap(data, sectionNum, isPreview = false) {
 
     // Placeholders Tambahan RUPS & Peningkatan Modal
     '{HARI_TANGGAL_RUPS}': (data.rups?.tanggal && data.rups.tanggal.trim()) ? formatTanggalAkta(data.rups.tanggal) : (isPreview ? '..................................................' : 'Jumat, tanggal dua puluh dua bulan November tahun dua ribu dua puluh empat (22-11-2024)'),
-    '{JAM_RUPS}': val(data.rups?.jam, '08.00 WIB'),
+    '{JAM_RUPS}': formatRupsJamText(data.rups?.jam, '08.00 WIB'),
     '{TEMPAT_RUPS}': val(data.rups?.tempat, 'Kantor Perseroan'),
-    '{PIMPINAN_RUPS}': val(data.rups?.pimpinan, 'Pimpinan Rapat'),
+    '{PIMPINAN_RUPS}': val(data.rups?.pimpinan, `${val(data.penghadap?.sapaan, 'Tuan')}. ${val(data.penghadap?.nama, '..............................')}`),
     '{TOTAL_SAHAM_HADIR_RUPS}': Number(data.rups?.sahamHadir || 0) > 0 ? formatSaham(data.rups.sahamHadir) : '..........',
     '{MODAL_SEMULA_NOMINAL}': Number(data.peningkatanModal?.modalSemulaNominal || 0) > 0 ? formatRupiah(data.peningkatanModal.modalSemulaNominal) : 'Rp. ....................',
     '{MODAL_SEMULA_SAHAM}': Number(data.peningkatanModal?.modalSemulaSaham || 0) > 0 ? formatSaham(data.peningkatanModal.modalSemulaSaham) : '..........',
@@ -603,7 +605,7 @@ export function buildPlaceholderMap(data, sectionNum, isPreview = false) {
       ? data.peningkatanModal.pemegangSahamModal.map((ps, idx) => {
           const jml = Number(ps.jumlahSaham ?? ps.lembarSaham ?? 0);
           const nom = Number(ps.nominal ?? ps.totalNominal ?? 0);
-          return `${idx + 1}. ${ps.nama || '....................'}, sebanyak ${formatSaham(jml)} saham atau senilai ${formatRupiah(nom)};`;
+          return `${idx + 1}. ${formatPtShareholderLabel(ps.nama, 'perseroan terbatas ....................')}, sebanyak ${formatSaham(jml)} saham atau senilai ${formatRupiah(nom)};`;
         }).join('\n')
       : '1. .............................., sebanyak .......... saham senilai Rp. ....................;'
   };
