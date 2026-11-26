@@ -368,13 +368,16 @@ body {
 .sub-nav-left {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  flex: 1 1 220px;
+  min-width: 0;
 }
 
 .doc-identity-wrapper {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .doc-title-row {
@@ -403,6 +406,8 @@ body {
   border: 1px solid #e5e7eb;
   color: #6b7280;
   width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
   transition: all 0.2s ease;
 }
 
@@ -420,11 +425,16 @@ body {
 .file-chip-label {
   font-weight: 500;
   opacity: 0.8;
+  flex-shrink: 0;
 }
 
 .file-chip-filename {
   font-weight: 600;
   color: #374151;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .active-draft-file-chip.has-file .file-chip-filename {
@@ -435,7 +445,9 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 1;
 }
 
 .doc-file-actions-group {
@@ -2067,6 +2079,7 @@ label {
   font-family: monospace;
   font-size: 12px;
   color: var(--ink);
+  word-break: break-all;
 }
 
 /* Dashboard Drafts Toolbar: Search & Sort */
@@ -3225,6 +3238,8 @@ label {
   top: calc(100% + 6px);
   right: 0;
   width: 330px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
   background-color: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 12px;

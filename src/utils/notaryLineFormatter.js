@@ -80,6 +80,17 @@ export function formatRupsJamText(rawJam, fallback = '08.00 WIB') {
 }
 
 /**
+ * Mengekstrak nama kota/kabupaten dari wilayah jabatan notaris secara aman
+ * (tidak memotong nama daerah seperti 'Kotawaringin' atau 'Kotabaru').
+ */
+export function extractCityFromWilayah(wilayah, fallback = 'Kudus') {
+  const clean = sanitizeInlineField(wilayah)
+    .replace(/^(?:kabupaten|kota(?:\s+administrasi)?)\s+/i, '')
+    .trim();
+  return clean || fallback;
+}
+
+/**
  * Memecah satu fragmen tanpa spasi yang melebihi batas karakter baris.
  */
 function sliceUnbreakableSegment(segment, maxLen) {

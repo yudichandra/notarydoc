@@ -17,7 +17,9 @@ import {
   buildInternalDocModel
 } from './utils/docGenerator.js';
 import {
-  sanitizeFilenameSegment
+  sanitizeFilenameSegment,
+  formatRupsJamText,
+  extractCityFromWilayah
 } from './utils/notaryLineFormatter.js';
 import {
   SECTION_NAMES,
@@ -1767,9 +1769,11 @@ function setActiveQuickDemo(activeId) { }
 // Beralih Antara PT, CV, FIRMA, dan UD
 function switchEntityType(type, autoLoadDemo = false, subType = null) {
   state.entityType = type;
-  if (subType) {
+  if (type !== 'PT') {
+    state.ptSubType = null;
+  } else if (subType) {
     state.ptSubType = subType;
-  } else if (type === 'PT' && !state.ptSubType) {
+  } else if (!state.ptSubType) {
     state.ptSubType = 'SIRKULER_PENGURUS';
   }
 
@@ -2941,13 +2945,16 @@ function loadDataToForm(data) {
 
 // Kumpulkan Data Form Menjadi JSON Object
 function kumpulkanDataForm() {
+  const nonNegInt = (rawVal) => Math.max(0, parseInt(rawVal, 10) || 0);
+  const rawNominalPerSaham = parseInt(document.getElementById('nominalPerSaham')?.value, 10);
+
   const pemegangSaham = [];
   document.querySelectorAll('#pemegangSahamContainer .dynamic-row-card').forEach(row => {
     pemegangSaham.push({
       nama: row.querySelector('.ps-nama')?.value || '',
       selaku: row.querySelector('.ps-selaku')?.value || '',
-      sahamSeriA: parseInt(row.querySelector('.ps-saham-a')?.value, 10) || 0,
-      sahamSeriB: parseInt(row.querySelector('.ps-saham-b')?.value, 10) || 0,
+      sahamSeriA: nonNegInt(row.querySelector('.ps-saham-a')?.value),
+      sahamSeriB: nonNegInt(row.querySelector('.ps-saham-b')?.value),
       tanggalTtd: row.querySelector('.ps-tgl')?.value || ''
     });
   });
@@ -2957,8 +2964,8 @@ function kumpulkanDataForm() {
     pemegangSahamModal.push({
       nama: row.querySelector('.psm-nama')?.value || '',
       persentase: row.querySelector('.psm-persen')?.value || '',
-      jumlahSaham: parseInt(row.querySelector('.psm-saham')?.value, 10) || 0,
-      nominal: parseInt(row.querySelector('.psm-nominal')?.value, 10) || 0
+      jumlahSaham: nonNegInt(row.querySelector('.psm-saham')?.value),
+      nominal: nonNegInt(row.querySelector('.psm-nominal')?.value)
     });
   });
 
@@ -2967,7 +2974,7 @@ function kumpulkanDataForm() {
     sekutu.push({
       nama: row.querySelector('.sk-nama')?.value || '',
       statusSekutu: row.querySelector('.sk-status')?.value || '',
-      nominalInbreng: parseInt(row.querySelector('.sk-nominal')?.value, 10) || 0,
+      nominalInbreng: nonNegInt(row.querySelector('.sk-nominal')?.value),
       persentase: row.querySelector('.sk-persen')?.value || '0',
       tanggalTtd: row.querySelector('.sk-tgl')?.value || ''
     });
@@ -3041,16 +3048,16 @@ function kumpulkanDataForm() {
       jam: document.getElementById('rupsJam')?.value || '',
       tempat: document.getElementById('rupsTempat')?.value || '',
       pimpinan: document.getElementById('rupsPimpinan')?.value || '',
-      sahamHadir: parseInt(document.getElementById('rupsSahamHadir')?.value, 10) || 0
+      sahamHadir: nonNegInt(document.getElementById('rupsSahamHadir')?.value)
     },
     peningkatanModal: {
-      modalSemulaNominal: parseInt(document.getElementById('modalSemulaNominal')?.value, 10) || 0,
-      modalSemulaSaham: parseInt(document.getElementById('modalSemulaSaham')?.value, 10) || 0,
-      nominalPerSaham: parseInt(document.getElementById('nominalPerSaham')?.value, 10) || 1000000,
-      modalMenjadiNominal: parseInt(document.getElementById('modalMenjadiNominal')?.value, 10) || 0,
-      modalMenjadiSaham: parseInt(document.getElementById('modalMenjadiSaham')?.value, 10) || 0,
-      sahamSimpananDikeluarkanJml: parseInt(document.getElementById('sahamSimpananDikeluarkanJml')?.value, 10) || 0,
-      sahamSimpananDikeluarkanNominal: parseInt(document.getElementById('sahamSimpananDikeluarkanNominal')?.value, 10) || 0,
+      modalSemulaNominal: nonNegInt(document.getElementById('modalSemulaNominal')?.value),
+      modalSemulaSaham: nonNegInt(document.getElementById('modalSemulaSaham')?.value),
+      nominalPerSaham: (!Number.isNaN(rawNominalPerSaham) && rawNominalPerSaham > 0) ? rawNominalPerSaham : 1000000,
+      modalMenjadiNominal: nonNegInt(document.getElementById('modalMenjadiNominal')?.value),
+      modalMenjadiSaham: nonNegInt(document.getElementById('modalMenjadiSaham')?.value),
+      sahamSimpananDikeluarkanJml: nonNegInt(document.getElementById('sahamSimpananDikeluarkanJml')?.value),
+      sahamSimpananDikeluarkanNominal: nonNegInt(document.getElementById('sahamSimpananDikeluarkanNominal')?.value),
       pengambilNama: document.getElementById('pengambilNama')?.value || '',
       pengambilKedudukan: document.getElementById('pengambilKedudukan')?.value || '',
       pengambilAktaPendirian: document.getElementById('pengambilAktaPendirian')?.value || '',
@@ -3061,11 +3068,11 @@ function kumpulkanDataForm() {
       pemegangSahamModal
     },
     saham: {
-      totalSeriA: parseInt(document.getElementById('totalSahamSeriA')?.value, 10) || 0,
-      totalSeriB: parseInt(document.getElementById('totalSahamSeriB')?.value, 10) || 0
+      totalSeriA: nonNegInt(document.getElementById('totalSahamSeriA')?.value),
+      totalSeriB: nonNegInt(document.getElementById('totalSahamSeriB')?.value)
     },
     modal: {
-      totalNominal: parseInt(document.getElementById('totalModalNominal')?.value, 10) || 0
+      totalNominal: nonNegInt(document.getElementById('totalModalNominal')?.value)
     },
     keputusan: {
       masaJabatan: document.getElementById('masaJabatan')?.value || '5 (lima)',
@@ -3126,7 +3133,7 @@ const FIELD_HIGHLIGHT_MAP = {
     label: 'Wilayah Notaris',
     terms: d => {
       const w = (d.notaris?.wilayah || '').trim();
-      return [w, w.toUpperCase(), w.replace(/Kabupaten|Kota/i, '').trim()];
+      return [w, w.toUpperCase(), extractCityFromWilayah(w, '')];
     }
   },
   notarisGelarPanjang: { key: 'notarisGelarPanjang', label: 'Gelar Panjang Notaris', terms: d => [d.notaris?.gelarPanjang] },
@@ -3160,7 +3167,7 @@ const FIELD_HIGHLIGHT_MAP = {
   totalSahamSeriB: { key: 'totalSahamSeriB', label: 'Total Saham Seri-B', terms: d => [d.saham?.totalSeriB ? formatSaham(d.saham.totalSeriB) : ''] },
   totalModalNominal: { key: 'totalModalNominal', label: 'Total Modal Inbreng', terms: d => [d.modal?.totalNominal ? formatRupiah(d.modal.totalNominal) : ''] },
   rupsTanggal: { key: 'rupsTanggal', label: 'Tanggal RUPS', terms: d => [formatTanggalAkta(d.rups?.tanggal), formatTanggalBiasa(d.rups?.tanggal)] },
-  rupsJam: { key: 'rupsJam', label: 'Jam RUPS', terms: d => [d.rups?.jam] },
+  rupsJam: { key: 'rupsJam', label: 'Jam RUPS', terms: d => [d.rups?.jam, formatRupsJamText(d.rups?.jam, '')] },
   rupsPimpinan: { key: 'rupsPimpinan', label: 'Pimpinan Rapat', terms: d => [d.rups?.pimpinan, d.penghadap?.nama] },
   rupsTempat: { key: 'rupsTempat', label: 'Tempat RUPS', terms: d => [d.rups?.tempat] },
   rupsSahamHadir: { key: 'rupsSahamHadir', label: 'Kuorum RUPS', terms: d => [d.rups?.sahamHadir ? formatSaham(d.rups.sahamHadir) : ''] },

@@ -9,8 +9,10 @@ import {
   formatOfficerColumnLines,
   sanitizeInlineField,
   sanitizeNotaryText,
+  formatAlphaIndex,
   formatPtShareholderLabel,
-  formatRupsJamText
+  formatRupsJamText,
+  extractCityFromWilayah
 } from './notaryLineFormatter.js';
 
 export const SECTION_NAMES = {
@@ -33,6 +35,7 @@ export const PLACEHOLDER_TO_FIELD_KEYS = {
   '{GELAR_SINGKAT_NOTARIS}': ['notarisGelarSingkat'],
   '{WILAYAH_NOTARIS}': ['notarisWilayah'],
   '{WILAYAH_NOTARIS_KAP}': ['notarisWilayah'],
+  '{WILAYAH_NOTARIS_KOTA}': ['notarisWilayah'],
   '{NAMA_ENTITAS}': ['ptNama'],
   '{KEDUDUKAN_ENTITAS}': ['ptKedudukan'],
   '{JABATAN_PENGHADAP}': ['penghadapJabatan'],
@@ -74,7 +77,10 @@ export const PLACEHOLDER_TO_FIELD_KEYS = {
   '{NOMINAL_SAHAM_DIKELUARKAN}': ['sahamSimpananDikeluarkanNominal'],
   '{NAMA_PENGAMBIL_BAGIAN}': ['pengambilNama', 'pengambilKedudukan', 'pengambilAktaPendirian', 'pengambilAktaPerubahan'],
   '{NAMA_PELEPAS_HAK}': ['pelepasanNama', 'pelepasanKedudukan', 'pelepasanLegalitas'],
-  '{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}': ['pemegangSahamModal'],
+  '{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}': ['pemegangSahamModal', 'nominalPerSaham'],
+  '{RINCIAN_PEMEGANG_SAHAM_MODAL_HURUF}': ['pemegangSahamModal', 'modalMenjadiSaham', 'modalMenjadiNominal'],
+  '{TOTAL_MODAL_PASAL_4_PENUTUP}': ['modalMenjadiSaham', 'modalMenjadiNominal'],
+  '{PENUTUP_DOKUMEN_MODAL_TTD}': ['notarisWilayah', 'aktaTanggal', 'rupsTanggal', 'penghadapSapaan', 'penghadapNama', 'rupsPimpinan', 'pemegangSaham', 'pemegangSahamModal'],
   '{MASA_JABATAN}': ['masaJabatan'],
   '{RINCIAN_SUSUNAN_PENGURUS_BARU}': ['pengurusBaru'],
   '{RINCIAN_DAFTAR_PEMEGANG_SAHAM_SEKUTU}': ['pemegangSaham', 'sekutu'],
@@ -177,7 +183,10 @@ export function getAvailablePlaceholders(sectionNum, tipe = 'PT', subTipe = 'SIR
         ...commonBadanUsaha,
         { tag: '{TOTAL_SAHAM_MENJADI}', label: 'Total Saham Menjadi', desc: 'Total lembar saham Pasal 4 ayat (2)' },
         { tag: '{MODAL_MENJADI_NOMINAL}', label: 'Modal Menjadi', desc: 'Total nominal modal Pasal 4 ayat (2)' },
-        { tag: '{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}', label: 'Rincian Pemegang Saham Baru', desc: 'Daftar penyetoran saham Pasal 4 ayat (2)' }
+        { tag: '{RINCIAN_PEMEGANG_SAHAM_MODAL_HURUF}', label: 'Daftar Pemegang Saham (a, b)', desc: 'Rincian huruf pemegang saham baru & total' },
+        { tag: '{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}', label: 'Rincian Penyetoran Saham (1, 2)', desc: 'Daftar penyetoran saham Pasal 4 ayat (2)' },
+        { tag: '{TOTAL_MODAL_PASAL_4_PENUTUP}', label: 'Total Penyetoran Pasal 4', desc: 'Kalimat penutup total jumlah saham & nominal' },
+        { tag: '{PENUTUP_DOKUMEN_MODAL_TTD}', label: 'Penutup & TTD Pemegang Saham', desc: 'Penutup dokumen sirkuler/RUPS beserta tanda tangan' }
       ];
     }
     return [
@@ -242,9 +251,11 @@ export function getDefaultClauseTemplate(sectionNum, tipe = 'PT', subTipe = 'SIR
   if (sectionNum === 1) {
     let j1 = 'AKTA PERNYATAAN KEPUTUSAN SIRKULER';
     let j2 = 'PARA PEMEGANG SAHAM PERSEROAN TERBATAS';
+    let barisEntitas = '“{NAMA_ENTITAS}”';
     if (tipe === 'PT' && subTipe === 'RUPS_MODAL') {
       j1 = 'AKTA PERNYATAAN KEPUTUSAN';
-      j2 = 'RAPAT UMUM PEMEGANG SAHAM LUAR BIASA\nPERSEROAN TERBATAS';
+      j2 = 'RAPAT UMUM PEMEGANG SAHAM LUAR BIASA';
+      barisEntitas = 'PERSEROAN TERBATAS “{NAMA_ENTITAS}”';
     } else if (tipe === 'CV') {
       j1 = 'AKTA PERNYATAAN KEPUTUSAN PARA PESERO';
       j2 = 'PERSEKUTUAN KOMANDITER';
@@ -258,7 +269,7 @@ export function getDefaultClauseTemplate(sectionNum, tipe = 'PT', subTipe = 'SIR
 
     return `${j1}
 ${j2}
-“{NAMA_ENTITAS}”
+${barisEntitas}
 BERKEDUDUKAN DI – {KEDUDUKAN_ENTITAS}
 Nomor : {NOMOR_AKTA} .-
 
@@ -276,7 +287,7 @@ Nomor : {NOMOR_AKTA} .-
   if (sectionNum === 3) {
     if (tipe === 'PT' && subTipe === 'RUPS_MODAL') {
       return `- {SAPAAN_PENGHADAP}. {NAMA_PENGHADAP}, lahir di {TEMPAT_LAHIR_PENGHADAP}, pada {TGL_LAHIR_PENGHADAP}, Warga Negara {WN_PENGHADAP}, {PEKERJAAN_PENGHADAP}, bertempat tinggal di {ALAMAT_PENGHADAP}, pemegang Kartu Tanda Penduduk nomor: {NIK_PENGHADAP};
-- Untuk keperluan dalam akta ini sementara waktu berada di Kudus;`;
+- Untuk keperluan dalam akta ini sementara waktu berada di {WILAYAH_NOTARIS_KOTA};`;
     }
     return `- {SAPAAN_PENGHADAP}. {NAMA_PENGHADAP}, lahir di {TEMPAT_LAHIR_PENGHADAP}, pada {TGL_LAHIR_PENGHADAP}, Warga Negara {WN_PENGHADAP}, {PEKERJAAN_PENGHADAP}, bertempat tinggal di {ALAMAT_PENGHADAP}, pemegang Kartu Tanda Penduduk nomor: {NIK_PENGHADAP};`;
   }
@@ -292,7 +303,8 @@ Nomor : {NOMOR_AKTA} .-
 - Bahwa berdasarkan kuasa yang diberikan dalam Rapat tersebut, penghadap diberi hak dan wewenang untuk menyatakan keputusan rapat dalam suatu akta Notaris;
 - Berdasarkan apa yang diuraikan diatas, penghadap menyatakan Rapat Umum Pemegang Saham Luar Biasa dengan suara bulat telah memutuskan:
 1) MENYETUJUI, Pengeluaran {JML_SAHAM_DIKELUARKAN} saham simpanan atau senilai {NOMINAL_SAHAM_DIKELUARKAN} yang diambil bagian dan disetor penuh oleh {NAMA_PENGAMBIL_BAGIAN}, sedangkan pemegang saham lainnya yaitu {NAMA_PELEPAS_HAK} menyatakan tidak ikut mengambil bagian atas saham simpanan tersebut serta mengesampingkan segala hak yang dimilikinya termasuk dan tidak terbatas pada hak untuk mendapatkan penawaran terlebih dahulu (pre-emptive rights);
-2) MENYETUJUI, Peningkatan Modal Ditempatkan dan Disetor semula {MODAL_SEMULA_NOMINAL} menjadi {MODAL_MENJADI_NOMINAL};`;
+2) MENYETUJUI, Peningkatan Modal Ditempatkan dan Disetor semula {MODAL_SEMULA_NOMINAL} menjadi {MODAL_MENJADI_NOMINAL};
+- Sehingga susunan kepemilikan saham perseroan terbatas “{NAMA_ENTITAS}” tersebut diatas adalah sebagai berikut :`;
     }
 
     if (tipe === 'PT' && subTipe === 'SIRKULER_MODAL') {
@@ -306,7 +318,8 @@ perseroan terbatas “{NAMA_ENTITAS}” yang dibuat secara dibawah tangan, ditan
 - Bahwa penghadap {SAPAAN_PENGHADAP}. {NAMA_PENGHADAP} yang bertindak dalam kedudukannya sebagaimana diatas dan dengan mempergunakan kekuatan kuasa yang diberikan oleh Para Pemegang Saham Perseroan berdasarkan Keputusan Sirkuler Pemegang Saham sekarang hendak menyatakan Keputusan Sirkuler Pemegang Saham tersebut dalam suatu akta Notaris.
 - Berdasarkan dengan apa yang telah diuraikan diatas, penghadap menyatakan para pemegang saham Perseroan telah mengambil keputusan sebagai berikut:
 1) MENYETUJUI, Pengeluaran {JML_SAHAM_DIKELUARKAN} saham simpanan atau senilai {NOMINAL_SAHAM_DIKELUARKAN} yang diambil bagian dan disetor penuh oleh {NAMA_PENGAMBIL_BAGIAN}, sedangkan pemegang saham lainnya yaitu {NAMA_PELEPAS_HAK} menyatakan tidak ikut mengambil bagian atas saham-saham yang dikeluarkan oleh Perseroan, serta mengesampingkan segala hak yang dimilikinya termasuk dan tidak terbatas pada hak untuk mendapatkan penawaran terlebih dahulu (pre-emptive rights);
-2) MENYETUJUI, Meningkatkan Modal Ditempatkan dan Disetor Perseroan semula {MODAL_SEMULA_NOMINAL} menjadi {MODAL_MENJADI_NOMINAL};`;
+2) MENYETUJUI, Meningkatkan Modal Ditempatkan dan Disetor Perseroan semula {MODAL_SEMULA_NOMINAL} menjadi {MODAL_MENJADI_NOMINAL};
+- Sehingga susunan kepemilikan saham perseroan terbatas “{NAMA_ENTITAS}” adalah sebagai berikut:`;
     }
 
     const judulSirkuler = tipe === 'PT'
@@ -331,13 +344,16 @@ ${modalText}
 
   if (sectionNum === 5) {
     if (tipe === 'PT' && (subTipe === 'SIRKULER_MODAL' || subTipe === 'RUPS_MODAL')) {
-      return `- Dengan demikian mengubah Pasal 4 ayat (2) Anggaran Dasar perseroan, sehingga untuk selanjutnya tertulis dan berbunyi sebagai berikut:
+      return `{RINCIAN_PEMEGANG_SAHAM_MODAL_HURUF}
+- Dengan demikian mengubah Pasal 4 ayat (2) Anggaran Dasar perseroan, sehingga untuk selanjutnya tertulis dan berbunyi sebagai berikut:
 ------------------- M O D A L -------------------
 -------------------- Pasal 4 --------------------
 2. Dari Modal Dasar tersebut telah ditempatkan dan disetor sebagian, sebanyak {TOTAL_SAHAM_MENJADI} saham dengan nilai nominal seluruhnya sebesar {MODAL_MENJADI_NOMINAL} oleh para pemegang saham yang telah mengambil bagian saham dengan rincian serta nilai nominal saham yang akan disebutkan pada akhir akta ini.
 - Bahwa dengan adanya peningkatan modal pada keputusan ini, dan bertalian dengan Modal Ditempatkan dan Modal Disetor sebagaimana dimaksud dalam pasal 4 ayat (2), maka bagian akhir Anggaran Dasar Perseroan menjadi berbunyi sebagai berikut:
 - Modal ditempatkan sebagaimana dimaksud dalam Pasal 4 ayat (2) telah disetor penuh dengan uang tunai melalui kas perseroan oleh para pemegang saham:
-{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}`;
+{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}
+{TOTAL_MODAL_PASAL_4_PENUTUP}
+{PENUTUP_DOKUMEN_MODAL_TTD}`;
     }
 
     return `1) MENYETUJUI, untuk memberhentikan dengan hormat ${labelOrganLama} terhitung sejak tanggal Keputusan Sirkuler ini berlaku efektif dan memberikan pengesahan atas tindakan kepengurusan dan pengawasan ${labelOrganLama} dalam melakukan tindakan hukum atas nama {SEBUTAN_ENTITAS_KAP}, sepanjang tindakan-tindakan hukum dimaksud sesuai/tidak menyimpang dari ketentuan dalam Anggaran Dasar {SEBUTAN_ENTITAS_KAP} dan tercermin dalam laporan keuangan tahunan {SEBUTAN_ENTITAS_KAP}, berikut dengan memberikan pelepasan dan pelunasan (Acquit et Decharge) sepenuhnya atas pelaksanaan pengurusan dan pengawasan yang telah dijalankan;
@@ -533,6 +549,7 @@ export function buildPlaceholderMap(data, sectionNum, isPreview = false) {
     '{GELAR_SINGKAT_NOTARIS}': notarisGelarSingkat,
     '{WILAYAH_NOTARIS}': (data.notaris?.wilayah && data.notaris.wilayah.trim()) ? data.notaris.wilayah.trim() : (isPreview ? '....................' : 'Kabupaten Kudus'),
     '{WILAYAH_NOTARIS_KAP}': notarisWilayah,
+    '{WILAYAH_NOTARIS_KOTA}': extractCityFromWilayah(data.notaris?.wilayah, isPreview ? '..........' : 'Kudus'),
     '{NAMA_ENTITAS}': entitasNama,
     '{KEDUDUKAN_ENTITAS}': entitasKedudukan,
     '{SEBUTAN_ENTITAS}': sebutanEntitas,
@@ -601,13 +618,69 @@ export function buildPlaceholderMap(data, sectionNum, isPreview = false) {
     })(),
     '{NAMA_PENGAMBIL_BAGIAN}': val(data.peningkatanModal?.pengambilNama, '..............................'),
     '{NAMA_PELEPAS_HAK}': val(data.peningkatanModal?.pelepasanNama, '..............................'),
+    '{RINCIAN_PEMEGANG_SAHAM_MODAL_HURUF}': (() => {
+      const pmList = Array.isArray(data.peningkatanModal?.pemegangSahamModal) ? data.peningkatanModal.pemegangSahamModal : [];
+      const linesOut = pmList.length > 0
+        ? pmList.map((ps, idx) => {
+            const jml = Number(ps.jumlahSaham ?? ps.lembarSaham ?? 0);
+            const nom = Number(ps.nominal ?? ps.totalNominal ?? 0);
+            return `${formatAlphaIndex(idx)}. ${formatPtShareholderLabel(ps.nama, 'perseroan terbatas ....................')}, tersebut diatas sebanyak ${formatSaham(jml)} saham atau senilai ${formatRupiah(nom)};`;
+          })
+        : ['a. perseroan terbatas ...................., tersebut diatas sebanyak .......... saham atau senilai Rp. ....................;'];
+      const totJml = Number(data.peningkatanModal?.modalMenjadiSaham || 0);
+      const totNom = Number(data.peningkatanModal?.modalMenjadiNominal || 0);
+      if (totJml > 0 && totNom > 0) {
+        linesOut.push(`- Sehingga total seluruhnya adalah sebanyak ${formatSaham(totJml)} saham atau senilai ${formatRupiah(totNom)};`);
+      }
+      return linesOut.join('\n');
+    })(),
     '{RINCIAN_PEMEGANG_SAHAM_MODAL_KOLOM}': (Array.isArray(data.peningkatanModal?.pemegangSahamModal) && data.peningkatanModal.pemegangSahamModal.length > 0)
       ? data.peningkatanModal.pemegangSahamModal.map((ps, idx) => {
           const jml = Number(ps.jumlahSaham ?? ps.lembarSaham ?? 0);
-          const nom = Number(ps.nominal ?? ps.totalNominal ?? 0);
-          return `${idx + 1}. ${formatPtShareholderLabel(ps.nama, 'perseroan terbatas ....................')}, sebanyak ${formatSaham(jml)} saham atau senilai ${formatRupiah(nom)};`;
+          const nps = Number(ps.nominalPerSaham ?? data.peningkatanModal?.nominalPerSaham ?? 1000000);
+          const nom = Number(ps.nominal ?? ps.totalNominal ?? (jml * nps));
+          return `${idx + 1}. ${formatPtShareholderLabel(ps.nama, 'perseroan terbatas ....................')}, tersebut diatas, sebanyak ${formatSaham(jml)} saham, dengan nilai nominal ${formatRupiah(nps)} per saham, atau seluruhnya sebesar ${formatRupiah(nom)};`;
         }).join('\n')
-      : '1. .............................., sebanyak .......... saham senilai Rp. ....................;'
+      : '1. perseroan terbatas ...................., tersebut diatas, sebanyak .......... saham, dengan nilai nominal Rp. .................... per saham, atau seluruhnya sebesar Rp. ....................;',
+    '{TOTAL_MODAL_PASAL_4_PENUTUP}': (() => {
+      const totJml = Number(data.peningkatanModal?.modalMenjadiSaham || 0);
+      const totNom = Number(data.peningkatanModal?.modalMenjadiNominal || 0);
+      if (totJml > 0 && totNom > 0) {
+        return `- Sehingga seluruhnya berjumlah ${formatSaham(totJml)} saham dengan nilai nominal seluruhnya sebesar ${formatRupiah(totNom)};`;
+      }
+      return '- Sehingga seluruhnya berjumlah .......... saham dengan nilai nominal seluruhnya sebesar Rp. ....................;';
+    })(),
+    '{PENUTUP_DOKUMEN_MODAL_TTD}': (() => {
+      const subTipeAct = data?.subTipe || data?.badanUsaha?.subTipe || 'SIRKULER_MODAL';
+      const isRupsDoc = subTipeAct === 'RUPS_MODAL';
+      const kotaTtd = extractCityFromWilayah(data.notaris?.wilayah, 'Kudus');
+      const docTglStr = (isRupsDoc && data.rups?.tanggal)
+        ? formatTanggalBiasa(data.rups.tanggal)
+        : ((data.akta?.tanggal && data.akta.tanggal.trim()) ? formatTanggalBiasa(data.akta.tanggal) : '....................');
+      const out = [
+        isRupsDoc
+          ? '- Demikian Berita Acara Rapat Umum Pemegang Saham ini, disahkan dan ditandatangani oleh Para Pemegang Saham sebagai bentuk persetujuan;'
+          : '- Demikian Keputusan Sirkuler Para Pemegang Saham ini, disahkan dan ditandatangani oleh Para Pemegang Saham sebagai bentuk persetujuan;',
+        `${kotaTtd}, ${docTglStr}`,
+        'Para Pemegang Saham Perseroan',
+        'materai sepuluh ribu rupiah',
+        'tanda tangan tidak terbaca'
+      ];
+      if (isRupsDoc) {
+        const pim = val(data.rups?.pimpinan, `${val(data.penghadap?.sapaan, 'Tuan')}. ${val(data.penghadap?.nama, '....................')}`);
+        out.push(pim);
+        out.push('Pimpinan Rapat;');
+      }
+      const pmList = Array.isArray(data.peningkatanModal?.pemegangSahamModal) ? data.peningkatanModal.pemegangSahamModal : [];
+      const ttdList = (Array.isArray(data.pemegangSaham) && data.pemegangSaham.length > 0)
+        ? data.pemegangSaham
+        : pmList.map(ps => ({ nama: ps.nama, selaku: `Pemegang ${(Number(ps.jumlahSaham || 0)).toLocaleString('id-ID')} saham Perseroan` }));
+      ttdList.forEach(ps => {
+        out.push(val(ps.nama, '..............................'));
+        out.push(`${val(ps.selaku, 'Pemegang Saham Perseroan')};`);
+      });
+      return out.join('\n');
+    })()
   };
 }
 
